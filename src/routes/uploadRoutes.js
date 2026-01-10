@@ -31,7 +31,19 @@ router.post(
   '/fiche-collecte',
   authenticate,
   authorize('SUPER_ADMIN', 'SA', 'ADMIN', 'AGENT'),
-  uploadFiche.single('file'),
+  (req, res, next) => {
+    uploadFiche.single('file')(req, res, (err) => {
+      if (err) {
+        console.error('Erreur Multer/Cloudinary:', err);
+        return res.status(500).json({
+          success: false,
+          message: err.message || 'Erreur lors de l\'upload',
+          error: err.name
+        });
+      }
+      next();
+    });
+  },
   (req, res) => {
     try {
       const file = req.file;
@@ -60,7 +72,8 @@ router.post(
       console.error('Erreur upload fiche collecte:', error);
       res.status(500).json({
         success: false,
-        message: 'Erreur lors de l\'upload du fichier'
+        message: error.message || 'Erreur lors de l\'upload du fichier',
+        error: process.env.NODE_ENV !== 'production' ? error.stack : undefined
       });
     }
   }
