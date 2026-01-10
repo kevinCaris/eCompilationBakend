@@ -5,12 +5,17 @@ const prisma = new PrismaClient();
  * Cree une nouvelle compilation pour un centre
  */
 const createCompilation = async (data) => {
-    const { electionId, centreDeVoteId, agentId, urlPhoto } = data;
+    const { electionId, centreDeVoteId, agentId, agentPrenom, agentNom, agentNumero, urlPhoto } = data;
 
     // Validations
     if (!electionId) throw new Error('ELECTION_ID_REQUIRED');
     if (!centreDeVoteId) throw new Error('CENTRE_ID_REQUIRED');
-    if (!agentId) throw new Error('AGENT_ID_REQUIRED');
+    
+    // Accepter soit agentId (ancien système) soit agentPrenom + agentNom + agentNumero (nouveau système)
+    if (!agentId && (!agentPrenom || !agentNom || !agentNumero)) {
+        throw new Error('AGENT_INFO_REQUIRED');
+    }
+    
     if (!urlPhoto) throw new Error('URL_PHOTO_REQUIRED');
 
     // Vérifier que l'élection existe
@@ -21,10 +26,12 @@ const createCompilation = async (data) => {
     const centre = await prisma.centreDeVote.findUnique({ where: { id: centreDeVoteId } });
     if (!centre) throw new Error('CENTRE_NOT_FOUND');
 
-    // Vérifier que l'agent existe et est un AGENT ou CA
-    const agent = await prisma.user.findUnique({ where: { id: agentId } });
-    if (!agent) throw new Error('AGENT_NOT_FOUND');
-    if (agent.role !== 'AGENT' && agent.role !== 'SA') throw new Error('INVALID_AGENT_ROLE');
+    // Si agentId fourni (ancien système), vérifier que l'agent existe
+    if (agentId) {
+        const agent = await prisma.user.findUnique({ where: { id: agentId } });
+        if (!agent) throw new Error('AGENT_NOT_FOUND');
+        if (agent.role !== 'AGENT' && agent.role !== 'SA') throw new Error('INVALID_AGENT_ROLE');
+    }
 
     // Vérifier qu'une compilation n'existe pas déjà pour ce centre/élection
     const existing = await prisma.compilation.findUnique({
@@ -53,6 +60,9 @@ const createCompilation = async (data) => {
             electionId,
             centreDeVoteId,
             agentId,
+            agentPrenom,
+            agentNom,
+            agentNumero,
             urlPhoto,
             status: statusInitial,
             dateValidation: statusInitial === 'VALIDEE' ? new Date() : null

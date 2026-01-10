@@ -283,7 +283,12 @@ model Compilation {
   id                 String   @id @default(cuid())
   electionId         String   @map("election_id")
   centreDeVoteId     String   @map("centre_de_vote_id")
-  agentId            String   @map("agent_id")
+  agentId            String?  @map("agent_id")
+  
+  // Nouveaux champs pour stocker les informations de l'agent sans référence
+  agentPrenom        String?  @map("agent_prenom") @db.VarChar(100)
+  agentNom           String?  @map("agent_nom") @db.VarChar(100)
+  agentNumero        String?  @map("agent_numero") @db.VarChar(50)
   
   urlPhoto           String?  @map("url_photo") @db.VarChar(500)
   
@@ -298,7 +303,7 @@ model Compilation {
 
   election           Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
   centreDeVote       CentreDeVote @relation(fields: [centreDeVoteId], references: [id], onDelete: Cascade)
-  agent              User @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agent              User? @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@unique([electionId, centreDeVoteId])
   @@index([electionId])
