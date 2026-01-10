@@ -262,7 +262,11 @@ const updateCompilation = async (id, data) => {
     }
 
     if (urlPhoto) {
-        if (!urlPhoto.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/i)) {
+        // Accepter les URLs Cloudinary et les URLs classiques avec extension image/PDF
+        const isCloudinary = urlPhoto.includes('cloudinary.com');
+        const isValidUrl = urlPhoto.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|pdf)$/i);
+        
+        if (!isCloudinary && !isValidUrl) {
             throw new Error('INVALID_PHOTO_URL');
         }
         updateData.urlPhoto = urlPhoto;

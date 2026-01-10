@@ -1,7 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const fs = require('fs');
-const path = require('path');
+const { deleteImage, getPublicIdFromUrl } = require('../config/cloudinary');
 
 const createParti = async (data) => {
     if (!data.electionId) {
@@ -168,22 +167,35 @@ const saveLogo = async (partiId, file) => {
     });
 
     if (!parti) {
-        fs.unlinkSync(file.path);
+        // Supprimer l'image uploadée sur Cloudinary si le parti n'existe pas
+        if (file.filename) {
+            try {
+                await deleteImage(file.filename);
+            } catch (e) {
+                console.error('Erreur suppression Cloudinary:', e);
+            }
+        }
         throw new Error('PARTI_NOT_FOUND');
     }
 
+    // Supprimer l'ancien logo de Cloudinary s'il existe
     if (parti.logo) {
-        const oldLogoPath = path.join(__dirname, '../../uploads', parti.logo);
-        if (fs.existsSync(oldLogoPath)) {
-            fs.unlinkSync(oldLogoPath);
+        const oldPublicId = getPublicIdFromUrl(parti.logo);
+        if (oldPublicId) {
+            try {
+                await deleteImage(oldPublicId);
+            } catch (e) {
+                console.error('Erreur suppression ancien logo:', e);
+            }
         }
     }
 
-    const logoPath = `partis/${file.filename}`;
+    // file.path contient l'URL Cloudinary complète
+    const logoUrl = file.path;
 
     const updatedParti = await prisma.parti.update({
         where: { id: partiId },
-        data: { logo: logoPath },
+        data: { logo: logoUrl },
         include: {
             election: true
         }
@@ -201,10 +213,15 @@ const deleteLogo = async (partiId) => {
         throw new Error('PARTI_NOT_FOUND');
     }
 
+    // Supprimer le logo de Cloudinary s'il existe
     if (parti.logo) {
-        const logoPath = path.join(__dirname, '../../uploads', parti.logo);
-        if (fs.existsSync(logoPath)) {
-            fs.unlinkSync(logoPath);
+        const publicId = getPublicIdFromUrl(parti.logo);
+        if (publicId) {
+            try {
+                await deleteImage(publicId);
+            } catch (e) {
+                console.error('Erreur suppression logo Cloudinary:', e);
+            }
         }
     }
 

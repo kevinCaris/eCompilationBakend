@@ -159,7 +159,7 @@ const updateCompilation = async (req, res, next) => {
             return res.status(400).json(error('L\'utilisateur doit être un AGENT ou SA', 400));
         }
         if (err.message === 'INVALID_PHOTO_URL') {
-            return res.status(400).json(error('URL de photo invalide (jpg, jpeg, png, gif)', 400));
+            return res.status(400).json(error('URL de photo invalide (formats acceptés: jpg, jpeg, png, gif, webp, pdf ou Cloudinary)', 400));
         }
         next(err);
     }
