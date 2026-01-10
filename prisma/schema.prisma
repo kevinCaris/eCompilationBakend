@@ -1,0 +1,368 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Departement {
+  id        String    @id @default(cuid())
+  code      String    @unique @db.VarChar(10)
+  nom       String    @db.VarChar(100)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  communes  Commune[]
+
+  @@map("departements")
+}
+
+model Commune {
+  id               String            @id @default(cuid())
+  departementId    String            @map("departement_id")
+  code             String            @db.VarChar(10)
+  nom              String            @db.VarChar(100)
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  circonscriptions Circonscription[]
+  departement      Departement       @relation(fields: [departementId], references: [id], onDelete: Cascade)
+
+  @@unique([departementId, code])
+  @@index([departementId])
+  @@map("communes")
+}
+
+model Circonscription {
+  id              String           @id @default(cuid())
+  communeId       String           @map("commune_id")
+  code            String           @db.VarChar(10)
+  nom             String           @db.VarChar(100)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  arrondissements Arrondissement[]
+  commune         Commune          @relation(fields: [communeId], references: [id], onDelete: Cascade)
+
+  @@unique([communeId, code])
+  @@index([communeId])
+  @@map("circonscriptions")
+}
+
+model Arrondissement {
+  id                String          @id @default(cuid())
+  circonscriptionId String          @map("circonscription_id")
+  code              String          @db.VarChar(10)
+  nom               String          @db.VarChar(100)
+  population        Int?
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  circonscription   Circonscription @relation(fields: [circonscriptionId], references: [id], onDelete: Cascade)
+  quartiers         Quartier[]
+  users             User[]
+
+  @@unique([circonscriptionId, code])
+  @@index([circonscriptionId])
+  @@map("arrondissements")
+}
+
+model Quartier {
+  id               String         @id @default(cuid())
+  arrondissementId String         @map("arrondissement_id")
+  code             String         @db.VarChar(10)
+  nom              String         @db.VarChar(100)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  centresDeVote    CentreDeVote[]
+  arrondissement   Arrondissement @relation(fields: [arrondissementId], references: [id], onDelete: Cascade)
+
+  @@unique([arrondissementId, code])
+  @@index([arrondissementId])
+  @@map("quartiers")
+}
+
+model CentreDeVote {
+  id            String        @id @default(cuid())
+  quartierId    String        @map("quartier_id")
+  nom           String        @db.VarChar(150)
+  adresse       String?       @db.VarChar(255)
+  nombrePostes  Int?          @map("nombre_postes")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  quartier      Quartier      @relation(fields: [quartierId], references: [id], onDelete: Cascade)
+  compilations  Compilation[]
+  postesDeVote  PosteDeVote[]
+  resultSaisies ResultSaisi[]
+  users         User[]        @relation("UserCentre")
+
+  @@index([quartierId])
+  @@map("centres_de_vote")
+}
+
+model PosteDeVote {
+  id             String        @id @default(cuid())
+  centreDeVoteId String        @map("centre_de_vote_id")
+  numero         Int?
+  libelle        String?       @db.VarChar(100)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  centreDeVote   CentreDeVote  @relation(fields: [centreDeVoteId], references: [id], onDelete: Cascade)
+  resultSaisies  ResultSaisi[]
+
+  @@index([centreDeVoteId])
+  @@map("postes_de_vote")
+}
+
+model User {
+  id                String                   @id @default(cuid())
+  email             String                   @unique @db.VarChar(100)
+  firstName         String?                  @map("first_name") @db.VarChar(100)
+  lastName          String?                  @map("last_name") @db.VarChar(100)
+  telephone         String?                  @db.VarChar(20)
+  role              Role
+  arrondissementId  String?                  @map("arrondissement_id")
+  centreDeVoteId    String?                  @map("centre_de_vote_id")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+  auditLogs         AuditLog[]
+  compilations      Compilation[]
+  verificationCodes EmailVerificationCode[]
+  recapitulatifs    RecapitulatifElectoral[] @relation("SARecapitulatif")
+  resultSaisies     ResultSaisi[]            @relation("SAResultSaisi")
+  arrondissement    Arrondissement?          @relation(fields: [arrondissementId], references: [id])
+  centreDeVote      CentreDeVote?            @relation("UserCentre", fields: [centreDeVoteId], references: [id])
+
+  @@index([email])
+  @@index([role])
+  @@index([arrondissementId])
+  @@index([centreDeVoteId])
+  @@map("users")
+}
+
+model EmailVerificationCode {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  code      String   @db.VarChar(6)
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("email_verification_codes")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  SA
+  AGENT
+}
+
+enum TypeElection {
+  LEGISLATIVE
+  COMMUNALES
+}
+
+enum StatusResultat {
+  COMPLETEE
+  VALIDEE
+  REJETEE
+}
+
+enum StatutElection {
+  PLANIFIEE
+  EN_COURS
+  FERMEE
+  ARCHIVEE
+}
+
+model Election {
+  id        String   @id @default(cuid())
+  type      TypeElection
+  statut    StatutElection @default(PLANIFIEE)
+  dateVote  DateTime  @map("date_vote")
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  partis                  Parti[]
+  resultSaisies           ResultSaisi[]
+  compilations            Compilation[]
+  recapitulatifs          RecapitulatifElectoral[]
+
+  @@unique([type, dateVote])  // Temporairement désactivé
+  @@index([type])
+  @@index([statut])
+  @@map("elections")
+}
+
+model Parti {
+  id         String   @id @default(cuid())
+  electionId String   @map("election_id")
+  nom        String   @db.VarChar(150)
+  sigle      String?  @db.VarChar(20)
+  logo       String?  @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  election      Election        @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  voixResultats ResultatParti[]
+
+  @@index([electionId])
+  @@map("partis")
+}
+
+enum StatusCompilation {
+  EN_COURS
+  VALIDEE
+  REJETEE
+}
+
+// ============ RÉSULTATS ============
+model ResultSaisi {
+  id                 String   @id @default(cuid())
+  electionId         String   @map("election_id")
+  centreDeVoteId     String   @map("centre_de_vote_id")
+  posteDeVoteId      String   @map("poste_de_vote_id")
+  saId               String   @map("sa_id")
+  
+  dateOuverture      DateTime? @map("date_ouverture")
+  dateFermeture      DateTime? @map("date_fermeture")
+  
+  nombreInscrits     Int?     @map("nombre_inscrits")
+  nombreVotants      Int?     @map("nombre_votants")
+  suffragesExprimes  Int?     @map("suffrages_exprimes")
+  abstentions        Int?     @map("abstentions")
+  bulletinsNuls      Int?     @map("bulletins_nuls")
+  derogations        Int?     @map("derogations")
+  procurations       Int?     @map("procurations")
+  tauxParticipation  Float?   @map("taux_participation")
+  
+  status             StatusResultat @default(COMPLETEE)
+  dateSaisie         DateTime @default(now()) @map("date_saisie")
+  dateValidation     DateTime? @map("date_validation")
+  
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  election           Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  centreDeVote       CentreDeVote @relation(fields: [centreDeVoteId], references: [id], onDelete: Cascade)
+  posteDeVote        PosteDeVote @relation(fields: [posteDeVoteId], references: [id], onDelete: Cascade)
+  sa                 User @relation("SAResultSaisi", fields: [saId], references: [id], onDelete: Cascade)
+  resultPartis       ResultatParti[]
+
+  @@unique([electionId, posteDeVoteId])
+  @@index([electionId])
+  @@index([centreDeVoteId])
+  @@index([posteDeVoteId])
+  @@index([saId])
+  @@index([status])
+  @@map("resultats_saisies")
+}
+
+model ResultatParti {
+  id              String   @id @default(cuid())
+  resultSaisiId   String   @map("result_saisie_id")
+  partiId         String   @map("parti_id")
+  voix            Int      @default(0) @map("voix")
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  resultSaisi     ResultSaisi @relation(fields: [resultSaisiId], references: [id], onDelete: Cascade)
+  parti           Parti @relation(fields: [partiId], references: [id], onDelete: Cascade)
+
+  @@unique([resultSaisiId, partiId])
+  @@index([resultSaisiId])
+  @@index([partiId])
+  @@map("resultats_partis")
+}
+
+// ============ COMPILATION ============
+model Compilation {
+  id                 String   @id @default(cuid())
+  electionId         String   @map("election_id")
+  centreDeVoteId     String   @map("centre_de_vote_id")
+  agentId            String   @map("agent_id")
+  
+  urlPhoto           String?  @map("url_photo") @db.VarChar(500)
+  
+  status             StatusCompilation @default(EN_COURS)
+  dateCompilation    DateTime @default(now()) @map("date_compilation")
+  dateValidation     DateTime? @map("date_validation")
+  dateRejet          DateTime? @map("date_rejet")
+  raison_rejet       String?  @map("raison_rejet") @db.Text
+  
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  election           Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  centreDeVote       CentreDeVote @relation(fields: [centreDeVoteId], references: [id], onDelete: Cascade)
+  agent              User @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([electionId, centreDeVoteId])
+  @@index([electionId])
+  @@index([centreDeVoteId])
+  @@index([agentId])
+  @@index([status])
+  @@map("compilations")
+}
+
+// ============ RÉCAPITULATIF ÉLECTORAL ============
+model RecapitulatifElectoral {
+  id                    String   @id @default(cuid())
+  electionId            String   @map("election_id")
+  saId                  String   @map("sa_id")
+  
+  nombreElecteurs       Int      @map("nombre_electeurs")
+  nombreCentresDeVote   Int      @map("nombre_centres_de_vote")
+  nombrePostesDeVote    Int      @map("nombre_postes_de_vote")
+  
+  raisonModification    String?  @map("raison_modification") @db.Text
+  
+  // Statut du récapitulatif (réutilise l'enum StatusResultat)
+  status               StatusResultat @default(COMPLETEE)
+
+  dateSaisie            DateTime @default(now()) @map("date_saisie")
+  dateModification      DateTime? @map("date_modification")
+  
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  election              Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  sa                    User @relation("SARecapitulatif", fields: [saId], references: [id], onDelete: Cascade)
+
+  @@unique([electionId, saId])
+  @@index([electionId])
+  @@index([saId])
+  @@index([status])
+  @@map("recapitulatifs_electoraux")
+}
+
+// ============ AUDIT LOG ============
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?  @map("user_id")
+  action      String   @db.VarChar(100)
+  resource    String?  @db.VarChar(100)       // Ex: "ResultSaisi", "Election", "User"
+  resourceId  String?  @map("resource_id")    // ID de l'entité concernée
+  method      String?  @db.VarChar(10)        // GET, POST, PUT, DELETE, PATCH
+  path        String?  @db.VarChar(500)       // URL appelée
+  ipAddress   String?  @map("ip_address") @db.VarChar(50)
+  userAgent   String?  @map("user_agent") @db.VarChar(500)
+  oldValues   String?  @map("old_values") @db.Text  // Valeurs avant modification (JSON)
+  newValues   String?  @map("new_values") @db.Text  // Valeurs après modification (JSON)
+  statusCode  Int?     @map("status_code")    // Code HTTP de réponse
+  details     String?  @db.Text               // Détails additionnels (JSON)
+  duration    Int?     @map("duration")       // Durée de la requête en ms
+  timestamp   DateTime @default(now())
+  
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([timestamp])
+  @@index([resourceId])
+  @@map("audit_logs")
+}
