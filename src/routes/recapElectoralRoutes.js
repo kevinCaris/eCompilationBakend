@@ -49,12 +49,12 @@ router.get(
 router.get(
     '/recapitulatifs-electoraux/election/:electionId/commune/:communeId/export-pdf',
     authenticate,
-    authorize('ADMIN', 'SUPER_ADMIN', 'SA'),
+    authorize('ADMIN', 'SUPER_ADMIN'),
     recapElectoralController.exportTableauMatricielPDF
 );
 
 router.get(
-    '/exports/centre/:electionId/:centreId/pdf',
+    '/expoarrondissementIdrts/centre/:electionId/:centreId/pdf',
     authenticate,
     authorize('ADMIN', 'SUPER_ADMIN'),
     recapElectoralController.exportCentreDetailPDF
@@ -67,6 +67,23 @@ router.get(
     authorize('ADMIN', 'SUPER_ADMIN'),
     recapElectoralController.exportCirconscriptionPDF
 );
+
+// ============ EXPORT CENTRES PAR ARRONDISSEMENT - Pour SA (téléchargement auto de son arrondissement) ============
+router.get(
+    '/exports/arrondissement/:electionId/me/pdf',
+    authenticate,
+    authorize('SA'),
+    recapElectoralController.exportCentresParArrondissementPDFForSA
+);
+
+// ============ EXPORT CENTRES PAR ARRONDISSEMENT - Pour ADMIN (avec paramètres) ============
+router.get(
+    '/exports/arrondissement/:electionId/:arrondissementId/pdf',
+    authenticate,
+    authorize('ADMIN', 'SUPER_ADMIN'),
+    recapElectoralController.exportCentresParArrondissementPDF
+);
+
 // ============ GET BY SA - Authentifié requis ============
 
 router.get(

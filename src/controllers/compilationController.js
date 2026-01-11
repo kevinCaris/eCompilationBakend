@@ -6,12 +6,27 @@ const { AUDIT_ACTIONS, RESOURCES } = require('../constants/auditActions');
 // ============ CREATE - Créer compilation ============
 const createCompilation = async (req, res, next) => {
     try {
-        const { electionId, centreDeVoteId, agentId, urlPhoto } = req.body;
+        const { electionId, centreDeVoteId, agentId, urlPhoto, agentInfo } = req.body;
+        
+        // Extraire les informations de l'agent depuis agentInfo (mobile) ou directement depuis req.body
+        let agentPrenom = req.body.agentPrenom;
+        let agentNom = req.body.agentNom;
+        let agentNumero = req.body.agentNumero;
+        
+        // Si agentInfo est fourni (format mobile), extraire les données
+        if (agentInfo && typeof agentInfo === 'object') {
+            agentPrenom = agentPrenom || agentInfo.prenom || agentInfo.firstName;
+            agentNom = agentNom || agentInfo.nom || agentInfo.lastName;
+            agentNumero = agentNumero || agentInfo.numero || agentInfo.telephone || agentInfo.phone;
+        }
 
         const compilation = await compilationService.createCompilation({
             electionId,
             centreDeVoteId,
             agentId,
+            agentPrenom,
+            agentNom,
+            agentNumero,
             urlPhoto
         });
 
@@ -35,6 +50,9 @@ const createCompilation = async (req, res, next) => {
         }
         if (err.message === 'AGENT_ID_REQUIRED') {
             return res.status(400).json(error('ID de l\'agent requis', 400));
+        }
+        if (err.message === 'AGENT_INFO_REQUIRED') {
+            return res.status(400).json(error('Informations de l\'agent requises (prénom, nom, numéro)', 400));
         }
         if (err.message === 'URL_PHOTO_REQUIRED') {
             return res.status(400).json(error('URL de la photo est requise', 400));

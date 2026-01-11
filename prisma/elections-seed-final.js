@@ -169,7 +169,7 @@ async function main() {
 
   // Super admins supplémentaires
   await prisma.user.create({
-    data: { email: 'okekristen@gmail.com', firstName: 'Kristen', lastName: 'Oke', role: 'SUPER_ADMIN', telephone: '+229 67 00 00 03' },
+    data: { email: 'okekristen@gmail.com', firstName: 'Kristen', lastName: 'OKE', role: 'SUPER_ADMIN', telephone: '+229 67 00 00 03' },
   });
   await prisma.user.create({
     data: { email: 'kevinadossou2@gmail.com', firstName: 'Kevin', lastName: 'Adossou', role: 'SUPER_ADMIN', telephone: '+229 67 00 00 04' },
@@ -186,19 +186,19 @@ async function main() {
 
   // SA Cotonou (13) - Avec vrais noms et prénoms
   const saDataCotonou = [
-    { firstName: 'Gangan Agognon', lastName: 'BONOU', telephone: '+229 97 89 09 15', email: 'janvier.bonougangan@mairie.bj' },
-    { firstName: 'Etienne', lastName: 'ABALO', telephone: '+229 97 09 59 47', email: 'ekabalo@mairie.bj' },
-    { firstName: 'Thierry', lastName: 'AGUENOUDE', telephone: '+229 96 84 72 97', email: 'thierry.aguenoude@mairie.bj' },
-    { firstName: 'Tokandji Marius Etienne', lastName: 'AGOUGOU', telephone: '+229 97 74 34 43', email: 'marius.agougou@mairie.bj' },
-    { firstName: 'Romaric', lastName: 'ATCHO', telephone: '+229 97 56 26 88', email: 'romaric.atcho@mairie.bj' },
-    { firstName: 'Adam', lastName: 'SOULE', telephone: '+229 97 56 68 11', email: 'adam.soule@mairie.bj' },
-    { firstName: 'Djima Patrice', lastName: 'AMOUSSOU', telephone: '+229 61 52 74 48', email: 'patrice.amoussou@mairie.bj' },
-    { firstName: 'Serge', lastName: 'DOSSOU-YOVO', telephone: '+229 97 24 65 05', email: 'serge.dossouyovo@mairie.bj' },
-    { firstName: 'Assiba Yollande Mahugbé', lastName: 'DEHOUI', telephone: '+229 97 48 11 09', email: 'yollande.dehoui@mairie.bj' },
-    { firstName: 'Sophie Angèle Akoua', lastName: 'ADJOVI', telephone: '+229 96 84 11 27', email: 'sophie.adjovi@mairie.bj' },
-    { firstName: 'Alain', lastName: 'CHINKOUN', telephone: '+229 96 60 47 84', email: 'alain.chinkoun@mairie.bj' },
-    { firstName: 'Nonvidé Nicolas Marius', lastName: 'SOSSOU VOVO', telephone: '+229 97 11 69 95', email: 'marius.sossouvovo@mairie.bj' },
-    { firstName: 'Oscar', lastName: 'BEHANZIN', telephone: '+229 66 03 25 40', email: 'oscar.behanzin@mairie.bj' },
+    { firstName: 'Janvier', lastName: 'BONOU GANGAN', telephone: '+229 97 890915', email: 'jbonougangan@gmail.com' },
+    { firstName: 'Etienne Kouassi', lastName: 'ABALO', telephone: '+229 97 09 59 47', email: 'etienneabalo96@gmail.com' },
+    { firstName: 'Thierry', lastName: 'AGUENOUDE', telephone: '+229 95 01 20 22', email: 'aguethy@gmail.com' },
+    { firstName: 'Tokandji Marius Etienne', lastName: 'AGOUGOU', telephone: '+229 95 340635', email: 'marius.agougouetienne1@gmail.com' },
+    { firstName: 'Romaric', lastName: 'ATCHO', telephone: '+229 97 56 26 88', email: 'djehoue09@gmail.com' },
+    { firstName: 'Adam', lastName: 'SOULE', telephone: '+229 95 26 27 49', email: 'souleadam897@gmail.com' },
+    { firstName: 'Djima Patrice', lastName: 'AMOUSSOU', telephone: '+229 61 527448', email: 'amoussoupatrice1583@gmail.com' },
+    { firstName: 'Serge', lastName: 'DOSSOU-YOVO', telephone: '+229 97 24 65 05', email: 'sergedossouyovo2020@gmail.com' },
+    { firstName: 'Assiba Yollande Mahugbé', lastName: 'DEHOUI', telephone: '+229 94 02 70 48', email: 'yollandedehoui1980@gmail.com' },
+    { firstName: 'Sophie Angèle Akoua', lastName: 'ADJOVI', telephone: '+229 95253652', email: 'sophieadjovi5@gmail.com' },
+    { firstName: 'Alain', lastName: 'CHINKOUN', telephone: '+229 40 58 65 59', email: 'chinkalain@gmail.com' },
+    { firstName: 'Nonvidé Nicolas Marius', lastName: 'SOSSOU-VOVO', telephone: '+229 95 41 33 01', email: 'msossouvovonicolas@gmail.com' },
+    { firstName: 'Oscar', lastName: 'BEHANZIN', telephone: '+229 66 03 25 40', email: 'lamarreceline32@gmail.com' },
   ];
 
   for (let i = 0; i < saDataCotonou.length; i++) {

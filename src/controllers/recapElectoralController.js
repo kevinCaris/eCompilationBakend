@@ -7,7 +7,7 @@ const path = require('path');
 const checkRecapStatus = async (req, res, next) => {
   try {
     const saId = req.user.userId;
-    const { electionId } = req.query;
+    const { electionId } = req.query; 
 
     const status = await recapElectoralService.checkRecapStatus(saId, electionId);
     res.json(success(status, 'Statut récupéré avec succès'));
@@ -329,7 +329,8 @@ const exportTableauMatricielPDF = async (req, res, next) => {
     
     // === EN-TÊTE OFFICIEL DU DOCUMENT ===
     const headerY = pageMargin;
-    const logoPath = path.join(__dirname, '../../uploads/logo_benin.jpeg');
+    // Utiliser le dossier assets pour les images statiques (persisté lors du déploiement)
+    const logoPath = path.join(__dirname, '../assets/images/logo_benin.jpeg');
     const logoSize = 50;
     
     // Logo centré en haut
@@ -345,7 +346,7 @@ const exportTableauMatricielPDF = async (req, res, next) => {
     }
     
     // Image du blason du Bénin - À gauche du bloc
-    const coatOfArmsPath = path.join(__dirname, '../../uploads/Coat_of_arms_of_Benin.png');
+    const coatOfArmsPath = path.join(__dirname, '../assets/images/Coat_of_arms_of_Benin.png');
     const coatOfArmsSize = 55;
     const coatOfArmsX = pageMargin;
     
@@ -384,16 +385,16 @@ const exportTableauMatricielPDF = async (req, res, next) => {
     
     // Devise et République dans le bloc
     doc.fontSize(7).font('Helvetica').fillColor('#000');
-    doc.text('Fraternité - Justice - Travail', blocLeftX, flagLineY + 8, { width: blocWidth, align: 'left' });
+    doc.text('MAIRIE DE COTONOU', blocLeftX, flagLineY + 8, { width: blocWidth, align: 'left' });
     doc.fontSize(7).font('Helvetica-Bold').fillColor('#000');
     doc.text('RÉPUBLIQUE DU BÉNIN', blocLeftX, flagLineY + 18, { width: blocWidth, align: 'left' });
     
     // Colonne droite - Coordonnées
     doc.fontSize(7).font('Helvetica');
     const rightX = pageWidth - 120;
-    doc.text('TÉL: 21-31-33-70 / 21-31-34-79', rightX, leftTextY, { width: 120, align: 'right' });
-    doc.text('FAX: 21-31-37-70', rightX, leftTextY + 8, { width: 120, align: 'right' });
-    doc.text('Email: info@gouvernement.bj', rightX, leftTextY + 16, { width: 120, align: 'right' });
+    doc.text('01 BP: 358 COTONOU', rightX, leftTextY, { width: 120, align: 'right' });
+    doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 8, { width: 120, align: 'right' });
+    doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 16, { width: 120, align: 'right' });
     
     // Ligne horizontale après l'en-tête
     const lineY1 = flagLineY + 28;
@@ -660,7 +661,8 @@ const exportCentreDetailPDF = async (req, res, next) => {
 
     // === EN-TÊTE OFFICIEL ===
     const headerY = pageMargin;
-    const logoPath = path.join(__dirname, '../../uploads/logo_benin.jpeg');
+    // Utiliser le dossier assets pour les images statiques (persisté lors du déploiement)
+    const logoPath = path.join(__dirname, '../assets/images/logo_benin.jpeg');
     const logoSize = 40;
     
     try {
@@ -675,7 +677,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
     }
 
     // Blason
-    const coatOfArmsPath = path.join(__dirname, '../../uploads/Coat_of_arms_of_Benin.png');
+    const coatOfArmsPath = path.join(__dirname, '../assets/images/Coat_of_arms_of_Benin.png');
     const coatOfArmsSize = 35;
     const coatOfArmsX = pageMargin;
     
@@ -709,16 +711,16 @@ const exportCentreDetailPDF = async (req, res, next) => {
     doc.rect(blocLeftX + colorWidth * 2, flagLineY, colorWidth, flagLineHeight).fill('#CE1126');
     
     doc.fontSize(7).font('Helvetica').fillColor('#000');
-    doc.text('Fraternité - Justice - Travail', blocLeftX, flagLineY + 8, { width: blocWidth, align: 'left' });
+    doc.text('MAIRIE DE COTONOU', blocLeftX, flagLineY + 8, { width: blocWidth, align: 'left' });
     doc.fontSize(7).font('Helvetica-Bold').fillColor('#000');
     doc.text('RÉPUBLIQUE DU BÉNIN', blocLeftX, flagLineY + 18, { width: blocWidth, align: 'left' });
     
     // Coordonnées droite
     doc.fontSize(7).font('Helvetica');
-    const rightX = pageWidth - 100;
-    doc.text('TÉL: 21-31-33-70 / 21-31-34-79', rightX, leftTextY, { width: 100, align: 'right' });
-    doc.text('FAX: 21-31-37-70', rightX, leftTextY + 8, { width: 100, align: 'right' });
-    doc.text('Email: info@gouvernement.bj', rightX, leftTextY + 16, { width: 100, align: 'right' });
+    const rightX = pageWidth - 120;
+    doc.text('01 BP: 358 COTONOU', rightX, leftTextY, { width: 120, align: 'right' });
+    doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 8, { width: 120, align: 'right' });
+    doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 16, { width: 120, align: 'right' });
 
     const lineY1 = flagLineY + 28;
     doc.moveTo(pageMargin, lineY1).lineTo(pageMargin + pageWidth, lineY1).stroke();
@@ -1099,7 +1101,8 @@ const exportCirconscriptionPDF = async (req, res, next) => {
 
     // === EN-TÊTE OFFICIEL ===
     const headerY = pageMargin;
-    const logoPath = path.join(__dirname, '../../uploads/logo_benin.jpeg');
+    // Utiliser le dossier assets pour les images statiques (persisté lors du déploiement)
+    const logoPath = path.join(__dirname, '../assets/images/logo_benin.jpeg');
     const logoSize = 40;
     
     try {
@@ -1113,7 +1116,7 @@ const exportCirconscriptionPDF = async (req, res, next) => {
       console.error('Erreur chargement logo:', err);
     }
 
-    const coatOfArmsPath = path.join(__dirname, '../../uploads/Coat_of_arms_of_Benin.png');
+    const coatOfArmsPath = path.join(__dirname, '../assets/images/Coat_of_arms_of_Benin.png');
     const coatOfArmsSize = 35;
     
     try {
@@ -1145,15 +1148,15 @@ const exportCirconscriptionPDF = async (req, res, next) => {
     doc.rect(blocLeftX + colorWidth * 2, flagLineY, colorWidth, flagLineHeight).fill('#CE1126');
     
     doc.fontSize(7).font('Helvetica').fillColor('#000');
-    doc.text('Fraternité - Justice - Travail', blocLeftX, flagLineY + 8, { width: blocWidth, align: 'left' });
+    doc.text('MAIRIE DE COTONOU', blocLeftX, flagLineY + 8, { width: blocWidth, align: 'left' });
     doc.fontSize(7).font('Helvetica-Bold').fillColor('#000');
     doc.text('RÉPUBLIQUE DU BÉNIN', blocLeftX, flagLineY + 18, { width: blocWidth, align: 'left' });
     
-    const rightX = pageWidth - 100;
+    const rightX = pageWidth - 120;
     doc.fontSize(7).font('Helvetica');
-    doc.text('TÉL: 21-31-33-70 / 21-31-34-79', rightX, leftTextY, { width: 100, align: 'right' });
-    doc.text('FAX: 21-31-37-70', rightX, leftTextY + 8, { width: 100, align: 'right' });
-    doc.text('Email: info@gouvernement.bj', rightX, leftTextY + 16, { width: 100, align: 'right' });
+    doc.text('01 BP: 358 COTONOU', rightX, leftTextY, { width: 120, align: 'right' });
+    doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 8, { width: 120, align: 'right' });
+    doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 16, { width: 120, align: 'right' });
 
     const lineY1 = flagLineY + 28;
     doc.moveTo(pageMargin, lineY1).lineTo(pageMargin + pageWidth, lineY1).stroke();
@@ -1318,6 +1321,459 @@ const exportCirconscriptionPDF = async (req, res, next) => {
   }
 };
 
+// ============ EXPORT CENTRES PAR ARRONDISSEMENT PDF ============
+const exportCentresParArrondissementPDF = async (req, res, next) => {
+  try {
+    const { electionId, arrondissementId } = req.params;
+    const PDFDocument = require('pdfkit');
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
+    // Récupérer l'arrondissement avec ses quartiers et centres
+    const arrondissement = await prisma.arrondissement.findUnique({
+      where: { id: arrondissementId },
+      include: {
+        circonscription: {
+          include: {
+            commune: {
+              include: {
+                departement: true
+              }
+            }
+          }
+        },
+        quartiers: {
+          include: {
+            centresDeVote: {
+              include: {
+                postesDeVote: {
+                  include: {
+                    resultSaisies: {
+                      where: { electionId },
+                      include: {
+                        resultPartis: {
+                          include: {
+                            parti: true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!arrondissement) {
+      await prisma.$disconnect();
+      return res.status(404).json(error('Arrondissement non trouvé', 404));
+    }
+
+    // Récupérer l'élection
+    const election = await prisma.election.findUnique({
+      where: { id: electionId }
+    });
+
+    if (!election) {
+      await prisma.$disconnect();
+      return res.status(404).json(error('Élection non trouvée', 404));
+    }
+
+    // Récupérer tous les partis de l'élection
+    const partis = await prisma.parti.findMany({
+      where: { electionId }
+    });
+
+    // Convertir les données Prisma en objets simples avant déconnexion
+    const centresData = JSON.parse(JSON.stringify(arrondissement.quartiers));
+    const partisData = JSON.parse(JSON.stringify(partis));
+    
+    await prisma.$disconnect();
+
+    // Reconstruire les données après déconnexion
+    const arrondissementData = JSON.parse(JSON.stringify(arrondissement));
+    const electionsData = JSON.parse(JSON.stringify(election));
+
+    // Collecter tous les centres de l'arrondissement
+    const centres = [];
+    centresData.forEach(quartier => {
+      quartier.centresDeVote.forEach(centre => {
+        centres.push({
+          ...centre,
+          quartierNom: quartier.nom
+        });
+      });
+    });
+
+    if (centres.length === 0) {
+      return res.status(404).json(error('Aucun centre de vote trouvé dans cet arrondissement', 404));
+    }
+
+    // Rubriques
+    const rubriques = [
+      { key: 'nombreInscrits', label: 'Nombre Inscrits' },
+      { key: 'nombreVotants', label: 'Nombre Votants' },
+      { key: 'suffragesExprimes', label: 'Suffrages Exprimés' },
+      { key: 'abstentions', label: 'Abstentions' },
+      { key: 'bulletinsNuls', label: 'Bulletins Nuls' },
+      { key: 'procurations', label: 'Procurations' },
+      { key: 'derogations', label: 'Dérogations' }
+    ];
+
+    // Fonction pour calculer les totaux par centre
+    const calculerTotauxCentre = (centre, rubriqueKey) => {
+      let total = 0;
+      centre.postesDeVote.forEach(poste => {
+        poste.resultSaisies.forEach(resultSaisi => {
+          total += resultSaisi[rubriqueKey] || 0;
+        });
+      });
+      return total;
+    };
+
+    // Fonction pour calculer les voix d'un parti par centre
+    const calculerVoixPartiCentre = (centre, partiId) => {
+      let total = 0;
+      centre.postesDeVote.forEach(poste => {
+        poste.resultSaisies.forEach(resultSaisi => {
+          const resultatParti = resultSaisi.resultPartis.find(rp => rp.partiId === partiId);
+          total += resultatParti ? (resultatParti.voix || 0) : 0;
+        });
+      });
+      return total;
+    };
+
+    // Préparer les données
+    const donnees = {
+      rubriques: {},
+      partis: {}
+    };
+
+    rubriques.forEach(rubrique => {
+      donnees.rubriques[rubrique.key] = {
+        label: rubrique.label,
+        centres: centres.map(centre => calculerTotauxCentre(centre, rubrique.key)),
+        total: 0
+      };
+      donnees.rubriques[rubrique.key].total = donnees.rubriques[rubrique.key].centres.reduce((a, b) => a + b, 0);
+    });
+
+    partisData.forEach(parti => {
+      donnees.partis[parti.id] = {
+        nom: parti.sigle || parti.nom,
+        centres: centres.map(centre => calculerVoixPartiCentre(centre, parti.id)),
+        total: 0
+      };
+      donnees.partis[parti.id].total = donnees.partis[parti.id].centres.reduce((a, b) => a + b, 0);
+    });
+
+    // Créer le PDF
+    const doc = new PDFDocument({ 
+      margin: 20, 
+      size: 'A4', 
+      layout: 'landscape',
+      bufferPages: true
+    });
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="centres_arrondissement_${arrondissementId}.pdf"`);
+    doc.pipe(res);
+
+    const pageMargin = 20;
+    const pageWidth = 842 - (pageMargin * 2);
+    const pageHeight = 595 - (pageMargin * 2);
+
+    // === EN-TÊTE OFFICIEL ===
+    const headerY = pageMargin;
+    // Utiliser le dossier assets pour les images statiques (persisté lors du déploiement)
+    const logoPath = path.join(__dirname, '../assets/images/logo_benin.jpeg');
+    const logoSize = 40;
+    
+    try {
+      if (fs.existsSync(logoPath)) {
+        doc.image(logoPath, (pageWidth / 2) - (logoSize / 2) + pageMargin, headerY, { 
+          width: logoSize, 
+          height: logoSize 
+        });
+      }
+    } catch (err) {
+      console.error('Erreur chargement logo:', err);
+    }
+
+    const coatOfArmsPath = path.join(__dirname, '../assets/images/Coat_of_arms_of_Benin.png');
+    const coatOfArmsSize = 35;
+    
+    try {
+      if (fs.existsSync(coatOfArmsPath)) {
+        doc.image(coatOfArmsPath, pageMargin, headerY, { 
+          width: coatOfArmsSize, 
+          height: coatOfArmsSize 
+        });
+      }
+    } catch (err) {
+      console.error('Erreur chargement blason:', err);
+    }
+
+    const blocLeftX = pageMargin + coatOfArmsSize + 10;
+    const blocWidth = 120;
+    const leftTextY = headerY + 5;
+    doc.fontSize(7).font('Helvetica-Bold');
+    doc.text('MINISTÈRE DE LA', blocLeftX, leftTextY, { width: blocWidth, align: 'left' });
+    doc.text('DÉCENTRALISATION ET DE LA', blocLeftX, leftTextY + 8, { width: blocWidth, align: 'left' });
+    doc.text('GOUVERNANCE LOCALE', blocLeftX, leftTextY + 16, { width: blocWidth, align: 'left' });
+
+    const flagLineY = leftTextY + 28;
+    const flagLineHeight = 5;
+    const flagLineWidth = 110;
+    const colorWidth = flagLineWidth / 3;
+    
+    doc.rect(blocLeftX, flagLineY, colorWidth, flagLineHeight).fill('#007A5E');
+    doc.rect(blocLeftX + colorWidth, flagLineY, colorWidth, flagLineHeight).fill('#FCD116');
+    doc.rect(blocLeftX + colorWidth * 2, flagLineY, colorWidth, flagLineHeight).fill('#CE1126');
+    
+    doc.fontSize(7).font('Helvetica').fillColor('#000');
+    doc.text('MAIRIE DE COTONOU', blocLeftX, flagLineY + 8, { width: blocWidth, align: 'left' });
+    doc.fontSize(7).font('Helvetica-Bold').fillColor('#000');
+    doc.text('RÉPUBLIQUE DU BÉNIN', blocLeftX, flagLineY + 18, { width: blocWidth, align: 'left' });
+    
+    const rightX = pageWidth - 120;
+    doc.fontSize(7).font('Helvetica');
+    doc.text('01 BP: 358 COTONOU', rightX, leftTextY, { width: 120, align: 'right' });
+    doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 8, { width: 120, align: 'right' });
+    doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 16, { width: 120, align: 'right' });
+
+    const lineY1 = flagLineY + 28;
+    doc.moveTo(pageMargin, lineY1).lineTo(pageMargin + pageWidth, lineY1).stroke();
+
+    // Titre
+    doc.fontSize(11).font('Helvetica-Bold');
+    doc.text(`RÉCAPITULATIF DES CENTRES DE VOTE - ${arrondissementData.nom.toUpperCase()}`, pageMargin, lineY1 + 8, { 
+      width: pageWidth, 
+      align: 'center' 
+    });
+
+    const departement = arrondissementData.circonscription?.commune?.departement?.nom || '';
+    const commune = arrondissementData.circonscription?.commune?.nom || '';
+    const circonscription = arrondissementData.circonscription?.nom || '';
+    doc.fontSize(8).font('Helvetica');
+    doc.text(`Département: ${departement}  |  Commune: ${commune}  |  Circonscription: ${circonscription}`, pageMargin, lineY1 + 24, { 
+      width: pageWidth, 
+      align: 'center' 
+    });
+    doc.text(`Élection: ${electionsData.type} du ${new Date(electionsData.dateVote).toLocaleDateString('fr-FR')}`, pageMargin, lineY1 + 36, { 
+      width: pageWidth, 
+      align: 'center' 
+    });
+
+    const lineY2 = lineY1 + 50;
+    doc.moveTo(pageMargin, lineY2).lineTo(pageMargin + pageWidth, lineY2).stroke();
+
+    // === TABLEAU ===
+    let tableY = lineY2 + 10;
+    const nbCentres = centres.length;
+    const rubriquesWidth = 80;
+    const centreWidth = Math.max(35, Math.floor((pageWidth - rubriquesWidth - 50) / nbCentres));
+    const totalWidth = 50;
+    const rowHeight = 14;
+
+    // En-tête - Ligne 1: RUBRIQUES + Noms des centres + TOTAL
+    doc.fontSize(6).font('Helvetica-Bold');
+    let x = pageMargin;
+    
+    // Cellule RUBRIQUES (2 lignes de hauteur)
+    doc.rect(x, tableY, rubriquesWidth, rowHeight * 2).stroke();
+    doc.text('RUBRIQUES', x + 2, tableY + rowHeight - 2, { width: rubriquesWidth - 4, align: 'center' });
+    x += rubriquesWidth;
+
+    // Colonnes pour chaque centre (2 lignes: nom centre + quartier)
+    centres.forEach((centre, index) => {
+      doc.rect(x, tableY, centreWidth, rowHeight * 2).stroke();
+      // Nom du centre (tronqué si trop long)
+      const nomCourt = centre.nom.length > 12 ? centre.nom.substring(0, 10) + '..' : centre.nom;
+      doc.fontSize(5).text(nomCourt, x + 1, tableY + 3, { 
+        width: centreWidth - 2, 
+        align: 'center' 
+      });
+      // Quartier
+      const quartierCourt = centre.quartierNom.length > 10 ? centre.quartierNom.substring(0, 8) + '..' : centre.quartierNom;
+      doc.fontSize(4).fillColor('#666').text(quartierCourt, x + 1, tableY + rowHeight + 2, { 
+        width: centreWidth - 2, 
+        align: 'center' 
+      });
+      doc.fillColor('#000');
+      x += centreWidth;
+    });
+
+    // Colonne TOTAL
+    doc.fontSize(6).font('Helvetica-Bold');
+    doc.rect(x, tableY, totalWidth, rowHeight * 2).stroke();
+    doc.text('TOTAL', x + 2, tableY + rowHeight - 2, { width: totalWidth - 4, align: 'center' });
+
+    tableY += rowHeight * 2;
+    doc.fontSize(5).font('Helvetica');
+
+    // Rubriques
+    rubriques.forEach(rubrique => {
+      x = pageMargin;
+      
+      doc.rect(x, tableY, rubriquesWidth, rowHeight).stroke();
+      doc.font('Helvetica-Bold').text(rubrique.label.substring(0, 18), x + 2, tableY + 3, { 
+        width: rubriquesWidth - 4, 
+        align: 'left' 
+      });
+      doc.font('Helvetica');
+      x += rubriquesWidth;
+
+      const rubricData = donnees.rubriques[rubrique.key];
+      rubricData.centres.forEach(val => {
+        doc.rect(x, tableY, centreWidth, rowHeight).stroke();
+        doc.text(val.toString(), x + 1, tableY + 3, { width: centreWidth - 2, align: 'center' });
+        x += centreWidth;
+      });
+
+      doc.rect(x, tableY, totalWidth, rowHeight).fillAndStroke('#f0f0f0', '#000');
+      doc.fillColor('#000').font('Helvetica-Bold').text(rubricData.total.toString(), x + 1, tableY + 3, { 
+        width: totalWidth - 2, 
+        align: 'center' 
+      });
+      doc.font('Helvetica').fillColor('#000');
+
+      tableY += rowHeight;
+    });
+
+    // Partis
+    partisData.forEach(parti => {
+      // Vérifier si on doit passer à une nouvelle page
+      if (tableY + rowHeight > pageHeight + pageMargin - 60) {
+        doc.addPage({ margin: 20, layout: 'landscape' });
+        tableY = pageMargin + 20;
+      }
+
+      x = pageMargin;
+      
+      doc.rect(x, tableY, rubriquesWidth, rowHeight).stroke();
+      doc.font('Helvetica-Bold').text((parti.sigle || parti.nom).substring(0, 18), x + 2, tableY + 3, { 
+        width: rubriquesWidth - 4, 
+        align: 'left' 
+      });
+      doc.font('Helvetica');
+      x += rubriquesWidth;
+
+      const partiData = donnees.partis[parti.id];
+      partiData.centres.forEach(val => {
+        doc.rect(x, tableY, centreWidth, rowHeight).stroke();
+        doc.text(val.toString(), x + 1, tableY + 3, { width: centreWidth - 2, align: 'center' });
+        x += centreWidth;
+      });
+
+      doc.rect(x, tableY, totalWidth, rowHeight).fillAndStroke('#e8e8e8', '#000');
+      doc.fillColor('#000').font('Helvetica-Bold').text(partiData.total.toString(), x + 1, tableY + 3, { 
+        width: totalWidth - 2, 
+        align: 'center' 
+      });
+      doc.font('Helvetica').fillColor('#000');
+
+      tableY += rowHeight;
+    });
+
+    // Ligne TOTAL VOIX
+    x = pageMargin;
+    doc.rect(x, tableY, rubriquesWidth, rowHeight).fillAndStroke('#d0d0d0', '#000');
+    doc.fillColor('#000').font('Helvetica-Bold').text('TOTAL VOIX', x + 2, tableY + 3, { 
+      width: rubriquesWidth - 4, 
+      align: 'center' 
+    });
+    x += rubriquesWidth;
+
+    centres.forEach((centre, index) => {
+      let total = 0;
+      partisData.forEach(parti => {
+        total += donnees.partis[parti.id].centres[index];
+      });
+
+      doc.rect(x, tableY, centreWidth, rowHeight).fillAndStroke('#d0d0d0', '#000');
+      doc.fillColor('#000').font('Helvetica-Bold').text(total.toString(), x + 1, tableY + 3, { 
+        width: centreWidth - 2, 
+        align: 'center' 
+      });
+      x += centreWidth;
+    });
+
+    const totalGeneral = partisData.reduce((sum, parti) => sum + donnees.partis[parti.id].total, 0);
+    doc.rect(x, tableY, totalWidth, rowHeight).fillAndStroke('#c0c0c0', '#000');
+    doc.fillColor('#000').font('Helvetica-Bold').text(totalGeneral.toString(), x + 1, tableY + 3, { 
+      width: totalWidth - 2, 
+      align: 'center' 
+    });
+
+    // === FOOTER ===
+    const footerY = Math.min(tableY + 30, pageHeight + pageMargin - 50);
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('#000');
+    doc.text('SIGNATURE', pageMargin, footerY);
+
+    doc.fontSize(8).font('Helvetica');
+    const col1X = pageMargin;
+    const col2X = pageMargin + pageWidth / 2;
+
+    doc.text('Nom et Prénom: ............................', col1X, footerY + 12);
+    doc.text('Signature: ............................', col2X, footerY + 12);
+
+    doc.text('Date: ________________', col1X, footerY + 28);
+    doc.fontSize(7).fillColor('#666');
+    doc.text(`Généré le: ${new Date().toLocaleString('fr-FR')}`, col2X, footerY + 28);
+
+    doc.end();
+
+  } catch (err) {
+    console.error('Erreur export centres par arrondissement:', err);
+    if (!res.headersSent) {
+      return res.status(500).json(error(`Erreur lors de la génération du PDF: ${err.message}`, 500));
+    }
+    next(err);
+  }
+};
+
+// ============ EXPORT CENTRES PAR ARRONDISSEMENT PDF - POUR SA ============
+const exportCentresParArrondissementPDFForSA = async (req, res, next) => {
+  try {
+    const { electionId } = req.params;
+    const userId = req.user.userId;
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
+    // Récupérer l'utilisateur SA avec son arrondissement
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        arrondissement: true
+      }
+    });
+
+    if (!user) {
+      await prisma.$disconnect();
+      return res.status(404).json(error('Utilisateur non trouvé', 404));
+    }
+
+    if (!user.arrondissementId) {
+      await prisma.$disconnect();
+      return res.status(400).json(error('Vous n\'êtes pas assigné à un arrondissement', 400));
+    }
+
+    await prisma.$disconnect();
+
+    // Appeler la fonction principale avec l'arrondissement de l'utilisateur
+    req.params.arrondissementId = user.arrondissementId;
+    return exportCentresParArrondissementPDF(req, res, next);
+
+  } catch (err) {
+    console.error('Erreur export centres SA:', err);
+    next(err);
+  }
+};
+
 module.exports = {
   checkRecapStatus,
   getMyRecapitulatif,
@@ -1331,5 +1787,7 @@ module.exports = {
   getRapportHierarchiqueByElection,
   exportTableauMatricielPDF,
   exportCentreDetailPDF,
-  exportCirconscriptionPDF
+  exportCirconscriptionPDF,
+  exportCentresParArrondissementPDF,
+  exportCentresParArrondissementPDFForSA
 };

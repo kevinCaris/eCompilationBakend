@@ -36,7 +36,7 @@ const sendVerificationEmail = async (email, code, firstName = '') => {
                     </div>
                     
                     <p style="color: #64748b; font-size: 14px; text-align: center;">
-                        Ce code expire dans <strong>10 minutes</strong>.
+                        Ce code expire dans <strong>3 minutes</strong>.
                     </p>
                     
                     <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
