@@ -94,7 +94,8 @@ const getResultsByElection = async (req, res, next) => {
 const getResultsByCentre = async (req, res, next) => {
     try {
         const { centreId } = req.params;
-        const results = await resultSaisiService.getResultsByCentre(centreId);
+        const { electionId } = req.query; // Permet de filtrer par élection
+        const results = await resultSaisiService.getResultsByCentre(centreId, electionId);
         res.json(success(results, 'Résultats du centre récupérés avec succès'));
     } catch (err) {
         if (err.message === 'CENTRE_ID_REQUIRED') {

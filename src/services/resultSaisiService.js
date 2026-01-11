@@ -153,15 +153,23 @@ const getResultsByElection = async (electionId) => {
 
 /**
  * Recupere tous les resultats d'un centre de vote
+ * @param {string} centreDeVoteId - ID du centre de vote
+ * @param {string} [electionId] - ID de l'élection (optionnel, pour filtrer par élection)
  */
-const getResultsByCentre = async (centreDeVoteId) => {
+const getResultsByCentre = async (centreDeVoteId, electionId = null) => {
     if (!centreDeVoteId) throw new Error('CENTRE_ID_REQUIRED');
 
     const centre = await prisma.centreDeVote.findUnique({ where: { id: centreDeVoteId } });
     if (!centre) throw new Error('CENTRE_NOT_FOUND');
 
+    // Construire la clause where avec filtre optionnel par élection
+    const whereClause = { centreDeVoteId };
+    if (electionId) {
+        whereClause.electionId = electionId;
+    }
+
     const results = await prisma.resultSaisi.findMany({
-        where: { centreDeVoteId },
+        where: whereClause,
         include: {
             election: true,
             posteDeVote: true,

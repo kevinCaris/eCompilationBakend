@@ -84,6 +84,15 @@ router.get(
     recapElectoralController.exportCentresParArrondissementPDF
 );
 
+// ============ EXPORT RÉCAPITULATIF GÉNÉRAL DES RÉSULTATS - COMPLET ============
+// PDF complet avec détails par poste, par centre et tableau récapitulatif
+router.get(
+    '/exports/arrondissement/:electionId/:arrondissementId/recap-complet-pdf',
+    authenticate,
+    authorize('ADMIN', 'SUPER_ADMIN'),
+    recapElectoralController.exportRecapGeneralResultatsPDF
+);
+
 // ============ GET BY SA - Authentifié requis ============
 
 router.get(

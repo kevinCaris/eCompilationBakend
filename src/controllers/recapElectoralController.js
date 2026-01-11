@@ -791,7 +791,23 @@ const exportCentreDetailPDF = async (req, res, next) => {
 
     tableY += rowHeight;
 
-    // Rubriques et données
+    // Fonction pour formater une date en heure HH:MM
+    const formatTime = (dateValue) => {
+      if (!dateValue) return '--:--';
+      const d = new Date(dateValue);
+      if (isNaN(d.getTime())) return '--:--';
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    };
+
+    // Rubriques horaires (format spécial)
+    const rubriquesHoraires = [
+      { key: 'dateOuverture', label: 'Heure Ouverture', format: 'time' },
+      { key: 'dateFermeture', label: 'Heure Fermeture', format: 'time' }
+    ];
+
+    // Rubriques et données numériques
     const rubriques = [
       { key: 'nombreInscrits', label: 'Nombre Inscrits' },
       { key: 'nombreVotants', label: 'Nombre Votants' },
@@ -805,7 +821,44 @@ const exportCentreDetailPDF = async (req, res, next) => {
 
     doc.fontSize(5).font('Helvetica');
 
-    // Rubriques principales
+    // Afficher les rubriques horaires en premier
+    rubriquesHoraires.forEach(rubrique => {
+      x = pageMargin;
+      
+      // Label rubrique
+      doc.rect(x, tableY, rubriquesWidth, rowHeight).stroke();
+      doc.font('Helvetica-Bold').text(rubrique.label, x + 2, tableY + 4, { 
+        width: rubriquesWidth - 4, 
+        align: 'left' 
+      });
+      doc.font('Helvetica');
+      x += rubriquesWidth;
+
+      // Données par poste (heures)
+      postes.forEach(poste => {
+        const resultSaisi = poste.resultSaisies[0];
+        const valeur = resultSaisi ? formatTime(resultSaisi[rubrique.key]) : '--:--';
+        
+        doc.rect(x, tableY, postWidth, rowHeight).stroke();
+        doc.text(valeur, x + 1, tableY + 4, { 
+          width: postWidth - 2, 
+          align: 'center' 
+        });
+        x += postWidth;
+      });
+
+      // Total (non applicable pour les heures)
+      doc.rect(x, tableY, postWidth, rowHeight).fillAndStroke('#f0f0f0', '#000');
+      doc.fillColor('#000').font('Helvetica-Bold').text('--', x + 1, tableY + 4, { 
+        width: postWidth - 2, 
+        align: 'center' 
+      });
+      doc.font('Helvetica');
+
+      tableY += rowHeight;
+    });
+
+    // Rubriques principales numériques
     rubriques.forEach(rubrique => {
       x = pageMargin;
       
@@ -1789,6 +1842,834 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
   }
 };
 
+// ============ EXPORT RÉCAPITULATIF GÉNÉRAL DES RÉSULTATS PAR ARRONDISSEMENT ============
+/**
+ * Export PDF complet avec:
+ * - Page 1: Résumé général (statistiques globales + résultats par parti)
+ * - Pages 2-N: Détail par centre avec tous les postes
+ * - Dernière page: Tableau récapitulatif par centre + signature
+ */
+const exportRecapGeneralResultatsPDF = async (req, res, next) => {
+  try {
+    const { electionId, arrondissementId } = req.params;
+    const PDFDocument = require('pdfkit');
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
+    // Récupérer l'arrondissement avec TOUTES ses données imbriquées
+    const arrondissement = await prisma.arrondissement.findUnique({
+      where: { id: arrondissementId },
+      include: {
+        circonscription: {
+          include: {
+            commune: {
+              include: {
+                departement: true
+              }
+            }
+          }
+        },
+        quartiers: {
+          orderBy: { nom: 'asc' },
+          include: {
+            centresDeVote: {
+              orderBy: { nom: 'asc' },
+              include: {
+                compilations: {
+                  where: { electionId },
+                  select: {
+                    agentPrenom: true,
+                    agentNom: true,
+                    agentNumero: true,
+                    status: true,
+                    dateValidation: true,
+                    agent: {
+                      select: {
+                        firstName: true,
+                        lastName: true,
+                        telephone: true
+                      }
+                    }
+                  }
+                },
+                postesDeVote: {
+                  orderBy: { numero: 'asc' },
+                  include: {
+                    resultSaisies: {
+                      where: { electionId },
+                      include: {
+                        resultPartis: {
+                          include: {
+                            parti: true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!arrondissement) {
+      await prisma.$disconnect();
+      return res.status(404).json(error('Arrondissement non trouvé', 404));
+    }
+
+    // Récupérer l'élection
+    const election = await prisma.election.findUnique({
+      where: { id: electionId }
+    });
+
+    if (!election) {
+      await prisma.$disconnect();
+      return res.status(404).json(error('Élection non trouvée', 404));
+    }
+
+    // Récupérer tous les partis de l'élection (triés par nom)
+    const partis = await prisma.parti.findMany({
+      where: { electionId },
+      orderBy: { nom: 'asc' }
+    });
+
+    // Convertir en objets simples
+    const arrondissementData = JSON.parse(JSON.stringify(arrondissement));
+    const electionData = JSON.parse(JSON.stringify(election));
+    const partisData = JSON.parse(JSON.stringify(partis));
+
+    await prisma.$disconnect();
+
+    // DEBUG: Afficher les données récupérées
+    console.log('[PDF DEBUG] Élection ID:', electionId);
+    console.log('[PDF DEBUG] Arrondissement:', arrondissementData.nom);
+    console.log('[PDF DEBUG] Nombre de quartiers:', arrondissementData.quartiers?.length || 0);
+    
+    let debugTotalResultats = 0;
+    arrondissementData.quartiers?.forEach(q => {
+      console.log(`[PDF DEBUG] Quartier ${q.nom}: ${q.centresDeVote?.length || 0} centres`);
+      q.centresDeVote?.forEach(c => {
+        const nbPostes = c.postesDeVote?.length || 0;
+        let nbResultats = 0;
+        c.postesDeVote?.forEach(p => {
+          if (p.resultSaisies && p.resultSaisies.length > 0) {
+            nbResultats++;
+          }
+        });
+        debugTotalResultats += nbResultats;
+        console.log(`[PDF DEBUG]   Centre ${c.nom}: ${nbPostes} postes, ${nbResultats} résultats saisis`);
+      });
+    });
+    console.log('[PDF DEBUG] TOTAL résultats saisis trouvés:', debugTotalResultats);
+
+    // Collecter tous les centres avec leurs données
+    const centres = [];
+    arrondissementData.quartiers.forEach(quartier => {
+      quartier.centresDeVote.forEach(centre => {
+        centres.push({
+          ...centre,
+          quartierNom: quartier.nom
+        });
+      });
+    });
+
+    if (centres.length === 0) {
+      return res.status(404).json(error('Aucun centre de vote trouvé dans cet arrondissement', 404));
+    }
+
+    // ============ CALCUL DES STATISTIQUES GLOBALES ============
+    let globalStats = {
+      totalCentres: centres.length,
+      totalPostes: 0,
+      postesCompiles: 0,
+      totalInscrits: 0,
+      totalVotants: 0,
+      totalAbstentions: 0,
+      totalSuffragesExprimes: 0,
+      totalBulletinsNuls: 0,
+      totalDerogations: 0,
+      totalProcurations: 0,
+      tauxParticipation: 0
+    };
+
+    let partisTotaux = {};
+    partisData.forEach(p => {
+      partisTotaux[p.id] = { nom: p.nom, sigle: p.sigle, voix: 0 };
+    });
+
+    // Parcourir tous les centres et postes pour calculer les totaux
+    centres.forEach(centre => {
+      globalStats.totalPostes += centre.postesDeVote.length;
+      
+      centre.postesDeVote.forEach(poste => {
+        if (poste.resultSaisies && poste.resultSaisies.length > 0) {
+          globalStats.postesCompiles++;
+          const result = poste.resultSaisies[0];
+          
+          globalStats.totalInscrits += result.nombreInscrits || 0;
+          globalStats.totalVotants += result.nombreVotants || 0;
+          globalStats.totalAbstentions += result.abstentions || 0;
+          globalStats.totalSuffragesExprimes += result.suffragesExprimes || 0;
+          globalStats.totalBulletinsNuls += result.bulletinsNuls || 0;
+          globalStats.totalDerogations += result.derogations || 0;
+          globalStats.totalProcurations += result.procurations || 0;
+
+          // Voix par parti
+          if (result.resultPartis) {
+            result.resultPartis.forEach(rp => {
+              if (partisTotaux[rp.partiId]) {
+                partisTotaux[rp.partiId].voix += rp.voix || 0;
+              }
+            });
+          }
+        }
+      });
+    });
+
+    // Calculer le taux de participation global
+    if (globalStats.totalInscrits > 0) {
+      globalStats.tauxParticipation = ((globalStats.totalVotants / globalStats.totalInscrits) * 100).toFixed(2);
+    }
+
+    // ============ CRÉATION DU PDF ============
+    const doc = new PDFDocument({ 
+      margin: 20, 
+      size: 'A4', 
+      layout: 'landscape',
+      bufferPages: true
+    });
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="recap_general_${arrondissementId}_${Date.now()}.pdf"`);
+    doc.pipe(res);
+
+    const pageMargin = 20;
+    const pageWidth = 842 - (pageMargin * 2);
+    const pageHeight = 595 - (pageMargin * 2);
+
+    // ============ FONCTION DESSINER EN-TÊTE OFFICIEL ============
+    const drawOfficialHeader = (pageNum, totalPages, subtitle = '') => {
+      const headerY = pageMargin;
+      
+      // Logo central
+      const logoPath = path.join(__dirname, '../assets/images/logo_benin.jpeg');
+      const logoSize = 40;
+      try {
+        if (fs.existsSync(logoPath)) {
+          doc.image(logoPath, (pageWidth / 2) - (logoSize / 2) + pageMargin, headerY, { 
+            width: logoSize, 
+            height: logoSize 
+          });
+        }
+      } catch (err) {
+        console.error('Erreur chargement logo:', err);
+      }
+
+      // Blason
+      const coatOfArmsPath = path.join(__dirname, '../assets/images/Coat_of_arms_of_Benin.png');
+      const coatOfArmsSize = 35;
+      try {
+        if (fs.existsSync(coatOfArmsPath)) {
+          doc.image(coatOfArmsPath, pageMargin, headerY, { 
+            width: coatOfArmsSize, 
+            height: coatOfArmsSize 
+          });
+        }
+      } catch (err) {
+        console.error('Erreur chargement blason:', err);
+      }
+
+      // Texte ministère
+      const blocLeftX = pageMargin + coatOfArmsSize + 10;
+      const blocWidth = 120;
+      const leftTextY = headerY + 5;
+      doc.fontSize(7).font('Helvetica-Bold');
+      doc.text('MINISTÈRE DE LA', blocLeftX, leftTextY, { width: blocWidth, align: 'left' });
+      doc.text('DÉCENTRALISATION ET DE LA', blocLeftX, leftTextY + 8, { width: blocWidth, align: 'left' });
+      doc.text('GOUVERNANCE LOCALE', blocLeftX, leftTextY + 16, { width: blocWidth, align: 'left' });
+
+      // Ligne drapeau
+      const flagLineY = leftTextY + 28;
+      const flagLineHeight = 5;
+      const flagLineWidth = 110;
+      const colorWidth = flagLineWidth / 3;
+      doc.rect(blocLeftX, flagLineY, colorWidth, flagLineHeight).fill('#007A5E');
+      doc.rect(blocLeftX + colorWidth, flagLineY, colorWidth, flagLineHeight).fill('#FCD116');
+      doc.rect(blocLeftX + colorWidth * 2, flagLineY, colorWidth, flagLineHeight).fill('#CE1126');
+      
+      doc.fontSize(7).font('Helvetica').fillColor('#000');
+      doc.text('MAIRIE DE COTONOU', blocLeftX, flagLineY + 8, { width: blocWidth, align: 'left' });
+      doc.fontSize(7).font('Helvetica-Bold').fillColor('#000');
+      doc.text('RÉPUBLIQUE DU BÉNIN', blocLeftX, flagLineY + 18, { width: blocWidth, align: 'left' });
+      
+      // Coordonnées droite
+      const rightX = pageWidth - 120;
+      doc.fontSize(7).font('Helvetica');
+      doc.text('01 BP: 358 COTONOU', rightX, leftTextY, { width: 120, align: 'right' });
+      doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 8, { width: 120, align: 'right' });
+      doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 16, { width: 120, align: 'right' });
+
+      const lineY1 = flagLineY + 28;
+      doc.moveTo(pageMargin, lineY1).lineTo(pageMargin + pageWidth, lineY1).stroke();
+
+      // Titre principal
+      doc.fontSize(11).font('Helvetica-Bold');
+      doc.text('RÉCAPITULATIF GÉNÉRAL DES RÉSULTATS ÉLECTORAUX', pageMargin, lineY1 + 8, { 
+        width: pageWidth, 
+        align: 'center' 
+      });
+
+      // Sous-titre si fourni
+      if (subtitle) {
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#333');
+        doc.text(subtitle, pageMargin, lineY1 + 22, { 
+          width: pageWidth, 
+          align: 'center' 
+        });
+        doc.fillColor('#000');
+      }
+
+      // Infos géographiques
+      const departement = arrondissementData.circonscription?.commune?.departement?.nom || '';
+      const commune = arrondissementData.circonscription?.commune?.nom || '';
+      const circonscription = arrondissementData.circonscription?.nom || '';
+      doc.fontSize(8).font('Helvetica');
+      const geoY = subtitle ? lineY1 + 36 : lineY1 + 24;
+      doc.text(`Département: ${departement}  |  Commune: ${commune}  |  Arrondissement: ${arrondissementData.nom}`, pageMargin, geoY, { 
+        width: pageWidth, 
+        align: 'center' 
+      });
+      doc.text(`Élection: ${electionData.type} du ${new Date(electionData.dateVote).toLocaleDateString('fr-FR')}`, pageMargin, geoY + 12, { 
+        width: pageWidth, 
+        align: 'center' 
+      });
+
+      // Numéro de page
+      doc.fontSize(7).fillColor('#666');
+      doc.text(`Page ${pageNum} / ${totalPages}`, pageWidth - 50, geoY + 12, { width: 70, align: 'right' });
+      doc.fillColor('#000');
+
+      const lineY2 = geoY + 26;
+      doc.moveTo(pageMargin, lineY2).lineTo(pageMargin + pageWidth, lineY2).stroke();
+
+      return lineY2;
+    };
+
+    // Estimer le nombre total de pages (1 résumé + 1 par centre + 1 récap)
+    const totalPages = 2 + centres.length;
+    let currentPage = 1;
+
+    // ============ PAGE 1: RÉSUMÉ GÉNÉRAL ============
+    let contentY = drawOfficialHeader(currentPage, totalPages);
+    contentY += 15;
+
+    // Section Statistiques Globales
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1E3A8A');
+    doc.text('STATISTIQUES GLOBALES', pageMargin, contentY);
+    doc.fillColor('#000');
+    contentY += 15;
+
+    // Tableau statistiques
+    const statsBoxWidth = 380;
+    const statsBoxHeight = 140;
+    doc.rect(pageMargin, contentY, statsBoxWidth, statsBoxHeight).stroke();
+    
+    doc.fontSize(8).font('Helvetica');
+    let statsY = contentY + 10;
+    const statsCol1 = pageMargin + 10;
+    const statsCol2 = pageMargin + 200;
+    const statsLineHeight = 16;
+
+    const statsLines = [
+      [`Nombre de Centres de Vote`, `${globalStats.totalCentres}`],
+      [`Nombre de Postes de Vote`, `${globalStats.totalPostes}`],
+      [`Postes Compilés`, `${globalStats.postesCompiles} (${globalStats.totalPostes > 0 ? ((globalStats.postesCompiles / globalStats.totalPostes) * 100).toFixed(1) : 0}%)`],
+      [``, ``],
+      [`Total Inscrits`, `${globalStats.totalInscrits.toLocaleString('fr-FR')}`],
+      [`Total Votants`, `${globalStats.totalVotants.toLocaleString('fr-FR')}`],
+      [`Taux de Participation`, `${globalStats.tauxParticipation}%`],
+      [`Total Suffrages Exprimés`, `${globalStats.totalSuffragesExprimes.toLocaleString('fr-FR')}`]
+    ];
+
+    statsLines.forEach(([label, value]) => {
+      if (label) {
+        doc.font('Helvetica').text(label, statsCol1, statsY, { width: 180 });
+        doc.font('Helvetica-Bold').text(value, statsCol2, statsY, { width: 150, align: 'right' });
+      }
+      statsY += statsLineHeight;
+    });
+
+    // Deuxième boîte statistiques
+    const stats2X = pageMargin + statsBoxWidth + 20;
+    doc.rect(stats2X, contentY, statsBoxWidth, statsBoxHeight).stroke();
+    
+    statsY = contentY + 10;
+    const stats2Col1 = stats2X + 10;
+    const stats2Col2 = stats2X + 200;
+
+    const stats2Lines = [
+      [`Total Bulletins Nuls`, `${globalStats.totalBulletinsNuls.toLocaleString('fr-FR')}`],
+      [`Total Abstentions`, `${globalStats.totalAbstentions.toLocaleString('fr-FR')}`],
+      [`Total Dérogations`, `${globalStats.totalDerogations.toLocaleString('fr-FR')}`],
+      [`Total Procurations`, `${globalStats.totalProcurations.toLocaleString('fr-FR')}`]
+    ];
+
+    stats2Lines.forEach(([label, value]) => {
+      doc.font('Helvetica').text(label, stats2Col1, statsY, { width: 180 });
+      doc.font('Helvetica-Bold').text(value, stats2Col2, statsY, { width: 150, align: 'right' });
+      statsY += statsLineHeight;
+    });
+
+    contentY += statsBoxHeight + 20;
+
+    // Section Résultats par Parti
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1E3A8A');
+    doc.text('RÉSULTATS PAR PARTI POLITIQUE (TOTAL)', pageMargin, contentY);
+    doc.fillColor('#000');
+    contentY += 15;
+
+    // Tableau des partis
+    const partiColWidth = [250, 120, 120];
+    const partiRowHeight = 18;
+    let partiX = pageMargin;
+    
+    // En-tête
+    doc.rect(partiX, contentY, partiColWidth[0], partiRowHeight).fillAndStroke('#1E3A8A', '#000');
+    doc.fillColor('#fff').fontSize(8).font('Helvetica-Bold');
+    doc.text('PARTI POLITIQUE', partiX + 5, contentY + 5, { width: partiColWidth[0] - 10 });
+    partiX += partiColWidth[0];
+    
+    doc.rect(partiX, contentY, partiColWidth[1], partiRowHeight).fillAndStroke('#1E3A8A', '#000');
+    doc.text('VOIX', partiX + 5, contentY + 5, { width: partiColWidth[1] - 10, align: 'center' });
+    partiX += partiColWidth[1];
+    
+    doc.rect(partiX, contentY, partiColWidth[2], partiRowHeight).fillAndStroke('#1E3A8A', '#000');
+    doc.text('% SUFFRAGES', partiX + 5, contentY + 5, { width: partiColWidth[2] - 10, align: 'center' });
+    
+    doc.fillColor('#000');
+    contentY += partiRowHeight;
+
+    // Données partis
+    const partisArray = Object.values(partisTotaux).sort((a, b) => b.voix - a.voix);
+    let totalVoixPartis = partisArray.reduce((sum, p) => sum + p.voix, 0);
+
+    partisArray.forEach((parti, idx) => {
+      const bgColor = idx % 2 === 0 ? '#f8f9fa' : '#ffffff';
+      partiX = pageMargin;
+      
+      doc.rect(partiX, contentY, partiColWidth[0], partiRowHeight).fillAndStroke(bgColor, '#ccc');
+      doc.fillColor('#000').fontSize(7).font('Helvetica');
+      const partiLabel = parti.sigle ? `${parti.sigle} (${parti.nom.substring(0, 30)})` : parti.nom.substring(0, 40);
+      doc.text(partiLabel, partiX + 5, contentY + 5, { width: partiColWidth[0] - 10 });
+      partiX += partiColWidth[0];
+      
+      doc.rect(partiX, contentY, partiColWidth[1], partiRowHeight).fillAndStroke(bgColor, '#ccc');
+      doc.fillColor('#000').font('Helvetica-Bold');
+      doc.text(parti.voix.toLocaleString('fr-FR'), partiX + 5, contentY + 5, { width: partiColWidth[1] - 10, align: 'center' });
+      partiX += partiColWidth[1];
+      
+      const pourcentage = totalVoixPartis > 0 ? ((parti.voix / totalVoixPartis) * 100).toFixed(2) : '0.00';
+      doc.rect(partiX, contentY, partiColWidth[2], partiRowHeight).fillAndStroke(bgColor, '#ccc');
+      doc.fillColor('#000').font('Helvetica');
+      doc.text(`${pourcentage}%`, partiX + 5, contentY + 5, { width: partiColWidth[2] - 10, align: 'center' });
+      
+      contentY += partiRowHeight;
+    });
+
+    // Ligne TOTAL
+    partiX = pageMargin;
+    doc.rect(partiX, contentY, partiColWidth[0], partiRowHeight).fillAndStroke('#d0d0d0', '#000');
+    doc.fillColor('#000').fontSize(8).font('Helvetica-Bold');
+    doc.text('TOTAL', partiX + 5, contentY + 5, { width: partiColWidth[0] - 10 });
+    partiX += partiColWidth[0];
+    
+    doc.rect(partiX, contentY, partiColWidth[1], partiRowHeight).fillAndStroke('#d0d0d0', '#000');
+    doc.text(totalVoixPartis.toLocaleString('fr-FR'), partiX + 5, contentY + 5, { width: partiColWidth[1] - 10, align: 'center' });
+    partiX += partiColWidth[1];
+    
+    doc.rect(partiX, contentY, partiColWidth[2], partiRowHeight).fillAndStroke('#d0d0d0', '#000');
+    doc.text('100.00%', partiX + 5, contentY + 5, { width: partiColWidth[2] - 10, align: 'center' });
+
+    // ============ PAGES DÉTAIL PAR CENTRE ============
+    centres.forEach((centre, centreIndex) => {
+      doc.addPage({ margin: 20, size: 'A4', layout: 'landscape' });
+      currentPage++;
+      
+      const centreSubtitle = `DÉTAIL DU CENTRE: ${centre.nom.toUpperCase()}`;
+      contentY = drawOfficialHeader(currentPage, totalPages, centreSubtitle);
+      contentY += 10;
+
+      // Infos du centre
+      doc.fontSize(8).font('Helvetica');
+      doc.text(`Quartier: ${centre.quartierNom}`, pageMargin, contentY);
+      
+      // Infos agent collecteur
+      const compilation = centre.compilations && centre.compilations.length > 0 ? centre.compilations[0] : null;
+      let agentNom = 'Non renseigné';
+      let agentTel = '';
+      let compilationStatus = 'NON COMPILÉ';
+      
+      if (compilation) {
+        if (compilation.agentPrenom || compilation.agentNom) {
+          agentNom = `${compilation.agentPrenom || ''} ${compilation.agentNom || ''}`.trim();
+          agentTel = compilation.agentNumero || '';
+        } else if (compilation.agent) {
+          agentNom = `${compilation.agent.firstName || ''} ${compilation.agent.lastName || ''}`.trim();
+          agentTel = compilation.agent.telephone || '';
+        }
+        compilationStatus = compilation.status === 'VALIDEE' ? '✓ VALIDÉE' : 
+                           compilation.status === 'REJETEE' ? '✗ REJETÉE' : 'EN COURS';
+      }
+
+      doc.text(`Agent Collecteur: ${agentNom}${agentTel ? ` | Tél: ${agentTel}` : ''}`, pageMargin + 250, contentY);
+      doc.text(`Statut: ${compilationStatus}`, pageMargin + 600, contentY);
+      contentY += 20;
+
+      // Tableau des postes
+      const postes = centre.postesDeVote || [];
+      const nbPostes = postes.length;
+      
+      if (nbPostes === 0) {
+        doc.text('Aucun poste de vote dans ce centre', pageMargin, contentY);
+        return;
+      }
+
+      // Calculer les largeurs
+      const rubriqueWidth = 100;
+      const posteWidth = Math.min(60, (pageWidth - rubriqueWidth - 70) / Math.min(nbPostes, 10));
+      const totalColWidth = 60;
+      const rowHeight = 14;
+
+      // Limiter à 10 postes par page (paginer si nécessaire)
+      const maxPostesPerPage = 10;
+      const posteChunks = [];
+      for (let i = 0; i < postes.length; i += maxPostesPerPage) {
+        posteChunks.push(postes.slice(i, i + maxPostesPerPage));
+      }
+
+      posteChunks.forEach((posteChunk, chunkIndex) => {
+        if (chunkIndex > 0) {
+          doc.addPage({ margin: 20, size: 'A4', layout: 'landscape' });
+          currentPage++;
+          contentY = drawOfficialHeader(currentPage, totalPages, `DÉTAIL DU CENTRE: ${centre.nom.toUpperCase()} (suite)`);
+          contentY += 20;
+        }
+
+        let tableY = contentY;
+        let x = pageMargin;
+
+        // En-tête tableau
+        doc.fontSize(6).font('Helvetica-Bold');
+        
+        // Colonne rubriques
+        doc.rect(x, tableY, rubriqueWidth, rowHeight * 2).fillAndStroke('#1E3A8A', '#000');
+        doc.fillColor('#fff').text('RUBRIQUES', x + 3, tableY + rowHeight - 2, { width: rubriqueWidth - 6, align: 'center' });
+        x += rubriqueWidth;
+
+        // Colonnes postes
+        posteChunk.forEach((poste, idx) => {
+          doc.rect(x, tableY, posteWidth, rowHeight * 2).fillAndStroke('#f0f0f0', '#000');
+          doc.fillColor('#000').fontSize(5);
+          const posteLabel = poste.numero ? `Poste ${poste.numero}` : `P${idx + 1}`;
+          doc.text(posteLabel, x + 2, tableY + rowHeight - 2, { width: posteWidth - 4, align: 'center' });
+          x += posteWidth;
+        });
+
+        // Colonne TOTAL
+        doc.rect(x, tableY, totalColWidth, rowHeight * 2).fillAndStroke('#1E3A8A', '#000');
+        doc.fillColor('#fff').fontSize(6).font('Helvetica-Bold');
+        doc.text('TOTAL', x + 3, tableY + rowHeight - 2, { width: totalColWidth - 6, align: 'center' });
+
+        tableY += rowHeight * 2;
+        doc.fillColor('#000');
+
+        // Rubriques de données
+        const dataRubriques = [
+          { key: 'dateOuverture', label: 'Heure Ouverture', format: 'time' },
+          { key: 'dateFermeture', label: 'Heure Fermeture', format: 'time' },
+          { key: 'nombreInscrits', label: 'Inscrits' },
+          { key: 'nombreVotants', label: 'Votants' },
+          { key: 'abstentions', label: 'Abstentions' },
+          { key: 'tauxParticipation', label: 'Taux Particip. (%)', format: 'percent' },
+          { key: 'suffragesExprimes', label: 'Suff. Exprimés' },
+          { key: 'bulletinsNuls', label: 'Bulletins Nuls' },
+          { key: 'derogations', label: 'Dérogations' },
+          { key: 'procurations', label: 'Procurations' }
+        ];
+
+        // Afficher les rubriques
+        doc.fontSize(5).font('Helvetica');
+        dataRubriques.forEach((rubrique, rubIdx) => {
+          x = pageMargin;
+          const bgColor = rubIdx % 2 === 0 ? '#fafafa' : '#ffffff';
+          
+          doc.rect(x, tableY, rubriqueWidth, rowHeight).fillAndStroke(bgColor, '#ccc');
+          doc.fillColor('#000').font('Helvetica-Bold').text(rubrique.label, x + 3, tableY + 4, { width: rubriqueWidth - 6 });
+          x += rubriqueWidth;
+
+          let total = 0;
+          let count = 0;
+
+          posteChunk.forEach(poste => {
+            const result = poste.resultSaisies && poste.resultSaisies.length > 0 ? poste.resultSaisies[0] : null;
+            let value = '0'; // Par défaut 0 au lieu de '-'
+            
+            if (rubrique.format === 'time') {
+              // Pour les heures, afficher --:-- si pas de données
+              value = '--:--';
+              if (result && result[rubrique.key]) {
+                const d = new Date(result[rubrique.key]);
+                if (!isNaN(d.getTime())) {
+                  value = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                }
+              }
+            } else if (rubrique.format === 'percent') {
+              // Pour les pourcentages
+              value = '0';
+              if (result && result[rubrique.key] !== null && result[rubrique.key] !== undefined) {
+                value = `${result[rubrique.key]}`;
+                total += parseFloat(result[rubrique.key]) || 0;
+                count++;
+              }
+            } else {
+              // Pour les valeurs numériques
+              value = '0';
+              if (result && result[rubrique.key] !== null && result[rubrique.key] !== undefined) {
+                value = result[rubrique.key].toString();
+                total += parseInt(result[rubrique.key]) || 0;
+              }
+            }
+
+            doc.rect(x, tableY, posteWidth, rowHeight).fillAndStroke(bgColor, '#ccc');
+            doc.fillColor('#000').font('Helvetica').text(value, x + 2, tableY + 4, { width: posteWidth - 4, align: 'center' });
+            x += posteWidth;
+          });
+
+          // Total
+          let totalValue = '0';
+          if (rubrique.format === 'time') {
+            totalValue = '--:--'; // Pas de total pour les heures
+          } else if (rubrique.format === 'percent') {
+            if (count > 0) {
+              totalValue = `${(total / count).toFixed(1)}`;
+            } else {
+              totalValue = '0';
+            }
+          } else {
+            totalValue = total.toString();
+          }
+          doc.rect(x, tableY, totalColWidth, rowHeight).fillAndStroke('#e8e8e8', '#ccc');
+          doc.fillColor('#000').font('Helvetica-Bold').text(totalValue, x + 2, tableY + 4, { width: totalColWidth - 4, align: 'center' });
+
+          tableY += rowHeight;
+        });
+
+        // Ligne séparatrice avant les partis
+        tableY += 2;
+        doc.moveTo(pageMargin, tableY).lineTo(pageMargin + rubriqueWidth + (posteChunk.length * posteWidth) + totalColWidth, tableY).stroke();
+        tableY += 4;
+
+        // Résultats par parti
+        doc.fontSize(5).font('Helvetica');
+        partisData.forEach((parti, partiIdx) => {
+          x = pageMargin;
+          const bgColor = partiIdx % 2 === 0 ? '#fff8e6' : '#ffffff';
+          
+          doc.rect(x, tableY, rubriqueWidth, rowHeight).fillAndStroke(bgColor, '#ccc');
+          doc.fillColor('#000').font('Helvetica-Bold');
+          const partiLabel = parti.sigle || parti.nom.substring(0, 15);
+          doc.text(partiLabel, x + 3, tableY + 4, { width: rubriqueWidth - 6 });
+          x += rubriqueWidth;
+
+          let totalVoix = 0;
+
+          posteChunk.forEach(poste => {
+            const result = poste.resultSaisies && poste.resultSaisies.length > 0 ? poste.resultSaisies[0] : null;
+            let voix = 0; // Par défaut 0 au lieu de '-'
+            
+            if (result && result.resultPartis) {
+              const rp = result.resultPartis.find(r => r.partiId === parti.id);
+              if (rp) {
+                voix = rp.voix || 0;
+                totalVoix += voix;
+              }
+            }
+
+            doc.rect(x, tableY, posteWidth, rowHeight).fillAndStroke(bgColor, '#ccc');
+            doc.fillColor('#000').font('Helvetica').text(voix.toString(), x + 2, tableY + 4, { width: posteWidth - 4, align: 'center' });
+            x += posteWidth;
+          });
+
+          // Total voix parti
+          doc.rect(x, tableY, totalColWidth, rowHeight).fillAndStroke('#ffe0b3', '#ccc');
+          doc.fillColor('#000').font('Helvetica-Bold').text(totalVoix.toString(), x + 2, tableY + 4, { width: totalColWidth - 4, align: 'center' });
+
+          tableY += rowHeight;
+        });
+
+        // Ligne TOTAL VOIX
+        x = pageMargin;
+        doc.rect(x, tableY, rubriqueWidth, rowHeight).fillAndStroke('#1E3A8A', '#000');
+        doc.fillColor('#fff').font('Helvetica-Bold').text('TOTAL VOIX', x + 3, tableY + 4, { width: rubriqueWidth - 6 });
+        x += rubriqueWidth;
+
+        let grandTotal = 0;
+        posteChunk.forEach(poste => {
+          const result = poste.resultSaisies && poste.resultSaisies.length > 0 ? poste.resultSaisies[0] : null;
+          let posteTotal = 0;
+          
+          if (result && result.resultPartis) {
+            posteTotal = result.resultPartis.reduce((sum, rp) => sum + (rp.voix || 0), 0);
+          }
+          grandTotal += posteTotal;
+
+          doc.rect(x, tableY, posteWidth, rowHeight).fillAndStroke('#1E3A8A', '#000');
+          doc.fillColor('#fff').font('Helvetica-Bold').text(posteTotal.toString(), x + 2, tableY + 4, { width: posteWidth - 4, align: 'center' });
+          x += posteWidth;
+        });
+
+        doc.rect(x, tableY, totalColWidth, rowHeight).fillAndStroke('#0f2557', '#000');
+        doc.fillColor('#fff').font('Helvetica-Bold').text(grandTotal.toString(), x + 2, tableY + 4, { width: totalColWidth - 4, align: 'center' });
+
+        contentY = tableY + rowHeight + 10;
+      });
+    });
+
+    // ============ DERNIÈRE PAGE: TABLEAU RÉCAPITULATIF PAR CENTRE ============
+    doc.addPage({ margin: 20, size: 'A4', layout: 'landscape' });
+    currentPage++;
+    contentY = drawOfficialHeader(currentPage, totalPages, 'TABLEAU RÉCAPITULATIF PAR CENTRE DE VOTE');
+    contentY += 15;
+
+    // Tableau récap
+    const recapRubriques = ['Centre', 'Postes', 'Inscrits', 'Votants', 'Suff.Exp', ...partisData.map(p => p.sigle || p.nom.substring(0, 8)), 'Total'];
+    const nbCols = recapRubriques.length;
+    const recapColWidth = Math.floor((pageWidth) / nbCols);
+    const recapRowHeight = 16;
+
+    // En-tête
+    let rx = pageMargin;
+    doc.fontSize(5).font('Helvetica-Bold');
+    recapRubriques.forEach((rub, idx) => {
+      const colW = idx === 0 ? recapColWidth * 1.5 : recapColWidth * 0.9;
+      doc.rect(rx, contentY, colW, recapRowHeight).fillAndStroke('#1E3A8A', '#000');
+      doc.fillColor('#fff').text(rub.substring(0, 10), rx + 2, contentY + 5, { width: colW - 4, align: 'center' });
+      rx += colW;
+    });
+    contentY += recapRowHeight;
+
+    // Données par centre
+    let totaux = {
+      postes: 0,
+      inscrits: 0,
+      votants: 0,
+      suffrages: 0,
+      partis: {}
+    };
+    partisData.forEach(p => totaux.partis[p.id] = 0);
+
+    doc.fontSize(5).font('Helvetica');
+    centres.forEach((centre, cIdx) => {
+      const bgColor = cIdx % 2 === 0 ? '#f8f9fa' : '#ffffff';
+      rx = pageMargin;
+
+      // Calculer les stats du centre
+      let centreStats = { postes: centre.postesDeVote.length, inscrits: 0, votants: 0, suffrages: 0, partis: {} };
+      partisData.forEach(p => centreStats.partis[p.id] = 0);
+
+      centre.postesDeVote.forEach(poste => {
+        if (poste.resultSaisies && poste.resultSaisies.length > 0) {
+          const r = poste.resultSaisies[0];
+          centreStats.inscrits += r.nombreInscrits || 0;
+          centreStats.votants += r.nombreVotants || 0;
+          centreStats.suffrages += r.suffragesExprimes || 0;
+          if (r.resultPartis) {
+            r.resultPartis.forEach(rp => {
+              if (centreStats.partis[rp.partiId] !== undefined) {
+                centreStats.partis[rp.partiId] += rp.voix || 0;
+              }
+            });
+          }
+        }
+      });
+
+      // Ajouter aux totaux
+      totaux.postes += centreStats.postes;
+      totaux.inscrits += centreStats.inscrits;
+      totaux.votants += centreStats.votants;
+      totaux.suffrages += centreStats.suffrages;
+      partisData.forEach(p => totaux.partis[p.id] += centreStats.partis[p.id]);
+
+      // Nom centre
+      const col1W = recapColWidth * 1.5;
+      doc.rect(rx, contentY, col1W, recapRowHeight).fillAndStroke(bgColor, '#ccc');
+      doc.fillColor('#000').font('Helvetica-Bold').text(centre.nom.substring(0, 25), rx + 2, contentY + 5, { width: col1W - 4 });
+      rx += col1W;
+
+      // Données
+      const vals = [centreStats.postes, centreStats.inscrits, centreStats.votants, centreStats.suffrages];
+      partisData.forEach(p => vals.push(centreStats.partis[p.id]));
+      vals.push(Object.values(centreStats.partis).reduce((a, b) => a + b, 0));
+
+      vals.forEach(val => {
+        const colW = recapColWidth * 0.9;
+        doc.rect(rx, contentY, colW, recapRowHeight).fillAndStroke(bgColor, '#ccc');
+        doc.fillColor('#000').font('Helvetica').text(val.toLocaleString('fr-FR'), rx + 2, contentY + 5, { width: colW - 4, align: 'center' });
+        rx += colW;
+      });
+
+      contentY += recapRowHeight;
+    });
+
+    // Ligne TOTAL
+    rx = pageMargin;
+    const col1W = recapColWidth * 1.5;
+    doc.rect(rx, contentY, col1W, recapRowHeight).fillAndStroke('#1E3A8A', '#000');
+    doc.fillColor('#fff').font('Helvetica-Bold').text('TOTAL', rx + 2, contentY + 5, { width: col1W - 4 });
+    rx += col1W;
+
+    const totalVals = [totaux.postes, totaux.inscrits, totaux.votants, totaux.suffrages];
+    partisData.forEach(p => totalVals.push(totaux.partis[p.id]));
+    totalVals.push(Object.values(totaux.partis).reduce((a, b) => a + b, 0));
+
+    totalVals.forEach(val => {
+      const colW = recapColWidth * 0.9;
+      doc.rect(rx, contentY, colW, recapRowHeight).fillAndStroke('#1E3A8A', '#000');
+      doc.fillColor('#fff').font('Helvetica-Bold').text(val.toLocaleString('fr-FR'), rx + 2, contentY + 5, { width: colW - 4, align: 'center' });
+      rx += colW;
+    });
+
+    // Zone signature
+    contentY += recapRowHeight + 30;
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('#000');
+    doc.text('VISA ET SIGNATURE', pageMargin, contentY);
+
+    contentY += 15;
+    doc.fontSize(8).font('Helvetica');
+    doc.text('Superviseur d\'Arrondissement: ............................................', pageMargin, contentY);
+    doc.text('Signature: ............................................', pageMargin + 400, contentY);
+    
+    contentY += 20;
+    doc.text('Date: ___/___/______', pageMargin, contentY);
+
+    // Footer
+    contentY += 30;
+    doc.fontSize(7).fillColor('#666');
+    doc.text(`Document généré le: ${new Date().toLocaleString('fr-FR')}`, pageMargin, contentY);
+
+    doc.end();
+
+  } catch (err) {
+    console.error('Erreur export récap général:', err);
+    if (!res.headersSent) {
+      return res.status(500).json(error(`Erreur lors de la génération du PDF: ${err.message}`, 500));
+    }
+    next(err);
+  }
+};
+
 // ============ EXPORT CENTRES PAR ARRONDISSEMENT PDF - POUR SA ============
 const exportCentresParArrondissementPDFForSA = async (req, res, next) => {
   try {
@@ -1842,5 +2723,6 @@ module.exports = {
   exportCentreDetailPDF,
   exportCirconscriptionPDF,
   exportCentresParArrondissementPDF,
-  exportCentresParArrondissementPDFForSA
+  exportCentresParArrondissementPDFForSA,
+  exportRecapGeneralResultatsPDF
 };

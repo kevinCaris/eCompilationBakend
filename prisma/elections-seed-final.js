@@ -175,11 +175,7 @@ async function main() {
     data: { email: 'kevinadossou2@gmail.com', firstName: 'Kevin', lastName: 'ADOSSOU', role: 'SUPER_ADMIN', telephone: '+229 67 00 00 04' },
   });
   await prisma.user.create({
-    data: { email: 'Konnonulrich@gmail.com', firstName: 'Ulrich', lastName: 'KONNON', role: 'SUPER_ADMIN', telephone: '+229 67 00 00 05' },
-  });
-
-  await prisma.user.create({
-    data: { email: 'Konnonulrich@gmail.com', firstName: 'Ulrich', lastName: 'KONNON', role: 'SUPER_ADMIN', telephone: '+229 67 00 00 05' },
+    data: { email: 'konnonulrich@gmail.com', firstName: 'Ulrich', lastName: 'KONNON', role: 'SUPER_ADMIN', telephone: '+229 67 00 00 05' },
   });
 
   // Admin
@@ -225,7 +221,7 @@ async function main() {
   const extraSuperAdmins = [
     { firstName: 'Clément', lastName: 'Ahyi', telephone: '+229 97 00 00 50', email: 'clement.ahyi@gmail.com' },
     { firstName: 'Kamal', lastName: 'Diop', telephone: '+229 97 00 00 51', email: 'kamaldinemoustapha229@gmail.com' },
-    { firstName: 'Dokpono', lastName: 'Regina', telephone: '+229 97 00 00 52', email: 'dokponoureginaemmanuella@gmail.com' },
+    { firstName: 'Dokponou', lastName: 'Regina', telephone: '+229 97 00 00 52', email: 'dokponoureginaemmanuella@gmail.com' },
   ];
 
   for (const adminData of extraSuperAdmins) {
@@ -244,7 +240,7 @@ async function main() {
   await prisma.user.create({
     data: {
       email: 'dokponoureginaemma@gmail.com',
-      firstName: 'Dokpono Regina',
+      firstName: 'Dokponou Regina',
       lastName: 'Emma',
       role: 'SA',
       telephone: '+229 97 00 00 53',
@@ -254,7 +250,7 @@ async function main() {
   // 1 autre SA supplémentaire
   await prisma.user.create({
     data: {
-      email: 'emmanuelladopkonou@gmail.com',
+      email: 'emmanuelladokponou@gmail.com',
       firstName: 'Emmanuella',
       lastName: 'DOKPONOU',
       role: 'SA',
