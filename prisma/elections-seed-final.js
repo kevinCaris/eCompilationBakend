@@ -159,11 +159,11 @@ async function main() {
   console.log('Utilisateurs...');
   const superAdmin = await prisma.user.create({
     data: {
-      email: 'aagbodjalou99@gmail.com',
-      firstName: 'Aagnon',
-      lastName: 'Dossoukpe',
+      email: 'Jesusoldafrik@gmail.com',
+      firstName: 'Olivier',
+      lastName: 'TOBOSSI',
       role: 'SUPER_ADMIN',
-      telephone: '+229 67 00 00 00',
+      telephone: '+229 60 65 04 04',
     },
   });
 
@@ -172,15 +172,19 @@ async function main() {
     data: { email: 'okekristen@gmail.com', firstName: 'Kristen', lastName: 'OKE', role: 'SUPER_ADMIN', telephone: '+229 67 00 00 03' },
   });
   await prisma.user.create({
-    data: { email: 'kevinadossou2@gmail.com', firstName: 'Kevin', lastName: 'Adossou', role: 'SUPER_ADMIN', telephone: '+229 67 00 00 04' },
+    data: { email: 'kevinadossou2@gmail.com', firstName: 'Kevin', lastName: 'ADOSSOU', role: 'SUPER_ADMIN', telephone: '+229 67 00 00 04' },
   });
   await prisma.user.create({
-    data: { email: 'Konnonulrich@gmail.com', firstName: 'Ulrich', lastName: 'Konnon', role: 'SUPER_ADMIN', telephone: '+229 67 00 00 05' },
+    data: { email: 'Konnonulrich@gmail.com', firstName: 'Ulrich', lastName: 'KONNON', role: 'SUPER_ADMIN', telephone: '+229 67 00 00 05' },
+  });
+
+  await prisma.user.create({
+    data: { email: 'Konnonulrich@gmail.com', firstName: 'Ulrich', lastName: 'KONNON', role: 'SUPER_ADMIN', telephone: '+229 67 00 00 05' },
   });
 
   // Admin
   await prisma.user.create({
-    data: { email: 'donaelielle@gmail.com', firstName: 'Donaelle', lastName: 'Admin', role: 'ADMIN', telephone: '+229 67 00 00 06' },
+    data: { email: 'donaelielle@gmail.com', firstName: 'Donaelle', lastName: 'ADMIN', role: 'ADMIN', telephone: '+229 67 00 00 06' },
   });
   console.log(`✓ 4 SUPER_ADMIN + 1 ADMIN`);
 
@@ -217,39 +221,64 @@ async function main() {
     });
   }
 
-  // 3 SA supplémentaires
-  const extraSA = [
+  // 3 SUPER_ADMIN supplémentaires
+  const extraSuperAdmins = [
     { firstName: 'Clément', lastName: 'Ahyi', telephone: '+229 97 00 00 50', email: 'clement.ahyi@gmail.com' },
     { firstName: 'Kamal', lastName: 'Diop', telephone: '+229 97 00 00 51', email: 'kamaldinemoustapha229@gmail.com' },
     { firstName: 'Dokpono', lastName: 'Regina', telephone: '+229 97 00 00 52', email: 'dokponoureginaemmanuella@gmail.com' },
   ];
 
-  for (const saData of extraSA) {
+  for (const adminData of extraSuperAdmins) {
     await prisma.user.create({
       data: {
-        email: saData.email,
-        firstName: saData.firstName,
-        lastName: saData.lastName,
-        role: 'SA',
-        telephone: saData.telephone,
+        email: adminData.email,
+        firstName: adminData.firstName,
+        lastName: adminData.lastName,
+        role: 'SUPER_ADMIN',
+        telephone: adminData.telephone,
       },
     });
   }
-  console.log(`✓ 16 SA (13 Cotonou + 3 Nationaux) avec vrais noms`);
 
-  // AGENT Cotonou (1 agent = 1 centre) - Batch insert
-  const centres = await prisma.centreDeVote.findMany();
-  const agentsData = centres.map((c, index) => ({
-    email: `agent.${c.id.substring(0, 8)}@mairie.bj`,
-    firstName: 'Agent',
-    lastName: c.nom.substring(0, 30),
-    role: 'AGENT',
-    telephone: `+229 67 ${String(index).padStart(2, '0')} ${String(Math.floor(index / 100)).padStart(2, '0')} ${String(index % 100).padStart(2, '0')}`,
-    centreDeVoteId: c.id,
-  }));
-  
-  await prisma.user.createMany({ data: agentsData });
-  console.log(`✓ ${agentsData.length} AGENT (1 par centre)\n`);
+  // 1 SA supplémentaire (sans arrondissement assigné)
+  await prisma.user.create({
+    data: {
+      email: 'dokponoureginaemma@gmail.com',
+      firstName: 'Dokpono Regina',
+      lastName: 'Emma',
+      role: 'SA',
+      telephone: '+229 97 00 00 53',
+    },
+  });
+
+  // 1 autre SA supplémentaire
+  await prisma.user.create({
+    data: {
+      email: 'emmanuelladopkonou@gmail.com',
+      firstName: 'Emmanuella',
+      lastName: 'DOKPONOU',
+      role: 'SA',
+      telephone: '+229 97 00 00 54',
+    },
+  });
+
+  console.log(`✓ 13 SA Cotonou + 2 SA supplémentaires`);
+  console.log(`✓ 3 SUPER_ADMIN supplémentaires`);
+
+  // AGENT Cotonou - DÉSACTIVÉ
+  // const centres = await prisma.centreDeVote.findMany();
+  // const agentsData = centres.map((c, index) => ({
+  //   email: `agent.${c.id.substring(0, 8)}@mairie.bj`,
+  //   firstName: 'Agent',
+  //   lastName: c.nom.substring(0, 30),
+  //   role: 'AGENT',
+  //   telephone: `+229 67 ${String(index).padStart(2, '0')} ${String(Math.floor(index / 100)).padStart(2, '0')} ${String(index % 100).padStart(2, '0')}`,
+  //   centreDeVoteId: c.id,
+  // }));
+  // 
+  // await prisma.user.createMany({ data: agentsData });
+  // console.log(`✓ ${agentsData.length} AGENT (1 par centre)\n`);
+  console.log(`✓ Agents non créés (désactivé)\n`);
 
   // ÉLECTIONS
   console.log('Élections...');
@@ -275,8 +304,8 @@ async function main() {
   console.log('═══════════════════════════════════════════════');
   console.log('              ✓ SEEDING COMPLET!');
   console.log('═══════════════════════════════════════════════');
-  console.log(`Quartiers: ${qCount} | Centres: ${cCount} | Postes: ${pCount}`);
-  console.log(`Utilisateurs: 4 SUPER + 1 ADMIN + 16 SA + ${cCount} AGENT`);
+  console.log(`✓ Quartiers: ${qCount} | Centres: ${cCount} | Postes: ${pCount}`);
+  console.log(`✓ Utilisateurs: 7 SUPER_ADMIN + 1 ADMIN + 15 SA`);
   console.log('═══════════════════════════════════════════════\n');
 }
 

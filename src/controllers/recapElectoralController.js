@@ -585,7 +585,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
     const { PrismaClient } = require('@prisma/client');
     const prisma = new PrismaClient();
 
-    // Récupérer le centre avec ses infos géographiques et les agents
+    // Récupérer le centre avec ses infos géographiques et la compilation (pour l'agent)
     const centre = await prisma.centreDeVote.findUnique({
       where: { id: centreId },
       include: {
@@ -606,13 +606,21 @@ const exportCentreDetailPDF = async (req, res, next) => {
             }
           }
         },
-        users: {
+        compilations: {
+          where: { electionId },
           select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            telephone: true,
-            role: true
+            agentPrenom: true,
+            agentNom: true,
+            agentNumero: true,
+            status: true,
+            agent: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                telephone: true
+              }
+            }
           }
         },
         postesDeVote: {
@@ -918,11 +926,24 @@ const exportCentreDetailPDF = async (req, res, next) => {
     const footerY = tableY + 40;
     const footerLineSpacing = 10;
 
-    // Infos collecteur/agent
-    const agents = centre.users || [];
-    const collecteur = agents.length > 0 ? agents[0] : null;
-    const collecteurNom = collecteur ? `${collecteur.firstName || ''} ${collecteur.lastName || ''}`.trim() : '';
-    const collecteurTel = collecteur?.telephone || '';
+    // Infos collecteur/agent depuis la compilation
+    const compilation = centre.compilations && centre.compilations.length > 0 ? centre.compilations[0] : null;
+    
+    // Priorité: champs agentPrenom/agentNom/agentNumero de la compilation, sinon relation agent
+    let collecteurNom = '';
+    let collecteurTel = '';
+    
+    if (compilation) {
+      if (compilation.agentPrenom || compilation.agentNom) {
+        // Utiliser les champs directs de la compilation
+        collecteurNom = `${compilation.agentPrenom || ''} ${compilation.agentNom || ''}`.trim();
+        collecteurTel = compilation.agentNumero || '';
+      } else if (compilation.agent) {
+        // Fallback: utiliser la relation agent
+        collecteurNom = `${compilation.agent.firstName || ''} ${compilation.agent.lastName || ''}`.trim();
+        collecteurTel = compilation.agent.telephone || '';
+      }
+    }
 
     doc.fontSize(8).font('Helvetica-Bold').fillColor('#000');
     doc.text('Agent Collecteur:', pageMargin, footerY);
@@ -930,6 +951,8 @@ const exportCentreDetailPDF = async (req, res, next) => {
     doc.fontSize(7).font('Helvetica');
     if (collecteurNom) {
       doc.text(`Nom: ${collecteurNom}`, pageMargin, footerY + 12);
+    } else {
+      doc.text(`Nom: (Non renseigné)`, pageMargin, footerY + 12);
     }
     if (collecteurTel) {
       doc.text(`Tél: ${collecteurTel}`, pageMargin, footerY + 22);
@@ -1485,229 +1508,259 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
     const pageMargin = 20;
     const pageWidth = 842 - (pageMargin * 2);
     const pageHeight = 595 - (pageMargin * 2);
+    const CENTRES_PAR_PAGE = 10; // Nombre de centres par page
 
-    // === EN-TÊTE OFFICIEL ===
-    const headerY = pageMargin;
-    // Utiliser le dossier assets pour les images statiques (persisté lors du déploiement)
-    const logoPath = path.join(__dirname, '../assets/images/logo_benin.jpeg');
-    const logoSize = 40;
-    
-    try {
-      if (fs.existsSync(logoPath)) {
-        doc.image(logoPath, (pageWidth / 2) - (logoSize / 2) + pageMargin, headerY, { 
-          width: logoSize, 
-          height: logoSize 
-        });
+    // Fonction pour dessiner l'en-tête officiel sur chaque page
+    const drawPageHeader = (pageNum = 1, totalPages = 1) => {
+      const headerY = pageMargin;
+      // Logo central
+      const logoPath = path.join(__dirname, '../assets/images/logo_benin.jpeg');
+      const logoSize = 40;
+      
+      try {
+        if (fs.existsSync(logoPath)) {
+          doc.image(logoPath, (pageWidth / 2) - (logoSize / 2) + pageMargin, headerY, { 
+            width: logoSize, 
+            height: logoSize 
+          });
+        }
+      } catch (err) {
+        console.error('Erreur chargement logo:', err);
       }
-    } catch (err) {
-      console.error('Erreur chargement logo:', err);
-    }
 
-    const coatOfArmsPath = path.join(__dirname, '../assets/images/Coat_of_arms_of_Benin.png');
-    const coatOfArmsSize = 35;
-    
-    try {
-      if (fs.existsSync(coatOfArmsPath)) {
-        doc.image(coatOfArmsPath, pageMargin, headerY, { 
-          width: coatOfArmsSize, 
-          height: coatOfArmsSize 
-        });
+      const coatOfArmsPath = path.join(__dirname, '../assets/images/Coat_of_arms_of_Benin.png');
+      const coatOfArmsSize = 35;
+      
+      try {
+        if (fs.existsSync(coatOfArmsPath)) {
+          doc.image(coatOfArmsPath, pageMargin, headerY, { 
+            width: coatOfArmsSize, 
+            height: coatOfArmsSize 
+          });
+        }
+      } catch (err) {
+        console.error('Erreur chargement blason:', err);
       }
-    } catch (err) {
-      console.error('Erreur chargement blason:', err);
-    }
 
-    const blocLeftX = pageMargin + coatOfArmsSize + 10;
-    const blocWidth = 120;
-    const leftTextY = headerY + 5;
-    doc.fontSize(7).font('Helvetica-Bold');
-    doc.text('MINISTÈRE DE LA', blocLeftX, leftTextY, { width: blocWidth, align: 'left' });
-    doc.text('DÉCENTRALISATION ET DE LA', blocLeftX, leftTextY + 8, { width: blocWidth, align: 'left' });
-    doc.text('GOUVERNANCE LOCALE', blocLeftX, leftTextY + 16, { width: blocWidth, align: 'left' });
+      const blocLeftX = pageMargin + coatOfArmsSize + 10;
+      const blocWidth = 120;
+      const leftTextY = headerY + 5;
+      doc.fontSize(7).font('Helvetica-Bold');
+      doc.text('MINISTÈRE DE LA', blocLeftX, leftTextY, { width: blocWidth, align: 'left' });
+      doc.text('DÉCENTRALISATION ET DE LA', blocLeftX, leftTextY + 8, { width: blocWidth, align: 'left' });
+      doc.text('GOUVERNANCE LOCALE', blocLeftX, leftTextY + 16, { width: blocWidth, align: 'left' });
 
-    const flagLineY = leftTextY + 28;
-    const flagLineHeight = 5;
-    const flagLineWidth = 110;
-    const colorWidth = flagLineWidth / 3;
-    
-    doc.rect(blocLeftX, flagLineY, colorWidth, flagLineHeight).fill('#007A5E');
-    doc.rect(blocLeftX + colorWidth, flagLineY, colorWidth, flagLineHeight).fill('#FCD116');
-    doc.rect(blocLeftX + colorWidth * 2, flagLineY, colorWidth, flagLineHeight).fill('#CE1126');
-    
-    doc.fontSize(7).font('Helvetica').fillColor('#000');
-    doc.text('MAIRIE DE COTONOU', blocLeftX, flagLineY + 8, { width: blocWidth, align: 'left' });
-    doc.fontSize(7).font('Helvetica-Bold').fillColor('#000');
-    doc.text('RÉPUBLIQUE DU BÉNIN', blocLeftX, flagLineY + 18, { width: blocWidth, align: 'left' });
-    
-    const rightX = pageWidth - 120;
-    doc.fontSize(7).font('Helvetica');
-    doc.text('01 BP: 358 COTONOU', rightX, leftTextY, { width: 120, align: 'right' });
-    doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 8, { width: 120, align: 'right' });
-    doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 16, { width: 120, align: 'right' });
+      const flagLineY = leftTextY + 28;
+      const flagLineHeight = 5;
+      const flagLineWidth = 110;
+      const colorWidth = flagLineWidth / 3;
+      
+      doc.rect(blocLeftX, flagLineY, colorWidth, flagLineHeight).fill('#007A5E');
+      doc.rect(blocLeftX + colorWidth, flagLineY, colorWidth, flagLineHeight).fill('#FCD116');
+      doc.rect(blocLeftX + colorWidth * 2, flagLineY, colorWidth, flagLineHeight).fill('#CE1126');
+      
+      doc.fontSize(7).font('Helvetica').fillColor('#000');
+      doc.text('MAIRIE DE COTONOU', blocLeftX, flagLineY + 8, { width: blocWidth, align: 'left' });
+      doc.fontSize(7).font('Helvetica-Bold').fillColor('#000');
+      doc.text('RÉPUBLIQUE DU BÉNIN', blocLeftX, flagLineY + 18, { width: blocWidth, align: 'left' });
+      
+      const rightX = pageWidth - 120;
+      doc.fontSize(7).font('Helvetica');
+      doc.text('01 BP: 358 COTONOU', rightX, leftTextY, { width: 120, align: 'right' });
+      doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 8, { width: 120, align: 'right' });
+      doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 16, { width: 120, align: 'right' });
 
-    const lineY1 = flagLineY + 28;
-    doc.moveTo(pageMargin, lineY1).lineTo(pageMargin + pageWidth, lineY1).stroke();
+      const lineY1 = flagLineY + 28;
+      doc.moveTo(pageMargin, lineY1).lineTo(pageMargin + pageWidth, lineY1).stroke();
 
-    // Titre
-    doc.fontSize(11).font('Helvetica-Bold');
-    doc.text(`RÉCAPITULATIF DES CENTRES DE VOTE - ${arrondissementData.nom.toUpperCase()}`, pageMargin, lineY1 + 8, { 
-      width: pageWidth, 
-      align: 'center' 
-    });
-
-    const departement = arrondissementData.circonscription?.commune?.departement?.nom || '';
-    const commune = arrondissementData.circonscription?.commune?.nom || '';
-    const circonscription = arrondissementData.circonscription?.nom || '';
-    doc.fontSize(8).font('Helvetica');
-    doc.text(`Département: ${departement}  |  Commune: ${commune}  |  Circonscription: ${circonscription}`, pageMargin, lineY1 + 24, { 
-      width: pageWidth, 
-      align: 'center' 
-    });
-    doc.text(`Élection: ${electionsData.type} du ${new Date(electionsData.dateVote).toLocaleDateString('fr-FR')}`, pageMargin, lineY1 + 36, { 
-      width: pageWidth, 
-      align: 'center' 
-    });
-
-    const lineY2 = lineY1 + 50;
-    doc.moveTo(pageMargin, lineY2).lineTo(pageMargin + pageWidth, lineY2).stroke();
-
-    // === TABLEAU ===
-    let tableY = lineY2 + 10;
-    const nbCentres = centres.length;
-    const rubriquesWidth = 80;
-    const centreWidth = Math.max(35, Math.floor((pageWidth - rubriquesWidth - 50) / nbCentres));
-    const totalWidth = 50;
-    const rowHeight = 14;
-
-    // En-tête - Ligne 1: RUBRIQUES + Noms des centres + TOTAL
-    doc.fontSize(6).font('Helvetica-Bold');
-    let x = pageMargin;
-    
-    // Cellule RUBRIQUES (2 lignes de hauteur)
-    doc.rect(x, tableY, rubriquesWidth, rowHeight * 2).stroke();
-    doc.text('RUBRIQUES', x + 2, tableY + rowHeight - 2, { width: rubriquesWidth - 4, align: 'center' });
-    x += rubriquesWidth;
-
-    // Colonnes pour chaque centre (2 lignes: nom centre + quartier)
-    centres.forEach((centre, index) => {
-      doc.rect(x, tableY, centreWidth, rowHeight * 2).stroke();
-      // Nom du centre (tronqué si trop long)
-      const nomCourt = centre.nom.length > 12 ? centre.nom.substring(0, 10) + '..' : centre.nom;
-      doc.fontSize(5).text(nomCourt, x + 1, tableY + 3, { 
-        width: centreWidth - 2, 
+      // Titre
+      doc.fontSize(11).font('Helvetica-Bold');
+      doc.text(`RÉCAPITULATIF DES CENTRES DE VOTE - ${arrondissementData.nom.toUpperCase()}`, pageMargin, lineY1 + 8, { 
+        width: pageWidth, 
         align: 'center' 
       });
-      // Quartier
-      const quartierCourt = centre.quartierNom.length > 10 ? centre.quartierNom.substring(0, 8) + '..' : centre.quartierNom;
-      doc.fontSize(4).fillColor('#666').text(quartierCourt, x + 1, tableY + rowHeight + 2, { 
-        width: centreWidth - 2, 
+
+      const departement = arrondissementData.circonscription?.commune?.departement?.nom || '';
+      const commune = arrondissementData.circonscription?.commune?.nom || '';
+      const circonscription = arrondissementData.circonscription?.nom || '';
+      doc.fontSize(8).font('Helvetica');
+      doc.text(`Département: ${departement}  |  Commune: ${commune}  |  Circonscription: ${circonscription}`, pageMargin, lineY1 + 24, { 
+        width: pageWidth, 
         align: 'center' 
       });
+      doc.text(`Élection: ${electionsData.type} du ${new Date(electionsData.dateVote).toLocaleDateString('fr-FR')}`, pageMargin, lineY1 + 36, { 
+        width: pageWidth, 
+        align: 'center' 
+      });
+
+      // Numéro de page
+      doc.fontSize(7).fillColor('#666');
+      doc.text(`Page ${pageNum} / ${totalPages}`, pageWidth - 50, lineY1 + 36, { width: 70, align: 'right' });
       doc.fillColor('#000');
-      x += centreWidth;
-    });
 
-    // Colonne TOTAL
-    doc.fontSize(6).font('Helvetica-Bold');
-    doc.rect(x, tableY, totalWidth, rowHeight * 2).stroke();
-    doc.text('TOTAL', x + 2, tableY + rowHeight - 2, { width: totalWidth - 4, align: 'center' });
+      const lineY2 = lineY1 + 50;
+      doc.moveTo(pageMargin, lineY2).lineTo(pageMargin + pageWidth, lineY2).stroke();
 
-    tableY += rowHeight * 2;
+      return lineY2;
+    };
+
+    // Dimensions du tableau
+    const nbRubriques = rubriques.length;
+    const nbPartis = partisData.length;
+    const centreColWidth = 90;
+    const totalVoixColWidth = 40;
+    const dataColWidth = Math.max(30, Math.floor((pageWidth - centreColWidth - totalVoixColWidth) / (nbRubriques + nbPartis)));
+    const rowHeight = 18;
+
+    // Fonction pour dessiner l'en-tête du tableau
+    const drawTableHeader = (startY) => {
+      let tableY = startY + 10;
+      doc.fontSize(5).font('Helvetica-Bold');
+      let x = pageMargin;
+      
+      // Cellule CENTRES (2 lignes de hauteur)
+      doc.rect(x, tableY, centreColWidth, rowHeight * 2).stroke();
+      doc.text('CENTRES DE VOTE', x + 2, tableY + rowHeight - 2, { width: centreColWidth - 4, align: 'center' });
+      x += centreColWidth;
+
+      // Colonnes pour chaque rubrique
+      rubriques.forEach((rubrique) => {
+        doc.rect(x, tableY, dataColWidth, rowHeight * 2).stroke();
+        doc.fontSize(4).text(rubrique.label, x + 1, tableY + 4, { 
+          width: dataColWidth - 2, 
+          align: 'center',
+          lineBreak: true
+        });
+        x += dataColWidth;
+      });
+
+      // Colonnes pour chaque parti
+      partisData.forEach((parti) => {
+        doc.rect(x, tableY, dataColWidth, rowHeight * 2).fillAndStroke('#f8f8f8', '#000');
+        const sigle = (parti.sigle || parti.nom);
+        doc.fillColor('#000').fontSize(4).text(sigle, x + 1, tableY + 4, { 
+          width: dataColWidth - 2, 
+          align: 'center',
+          lineBreak: true
+        });
+        x += dataColWidth;
+      });
+
+      // Colonne TOTAL VOIX
+      doc.rect(x, tableY, totalVoixColWidth, rowHeight * 2).fillAndStroke('#e0e0e0', '#000');
+      doc.fillColor('#000').fontSize(4).text('TOTAL VOIX', x + 1, tableY + rowHeight - 2, { 
+        width: totalVoixColWidth - 2, 
+        align: 'center' 
+      });
+
+      return tableY + rowHeight * 2;
+    };
+
+    // Calculer le nombre total de pages
+    const totalPages = Math.ceil(centres.length / CENTRES_PAR_PAGE);
+
+    // === PREMIÈRE PAGE ===
+    let lineY2 = drawPageHeader(1, totalPages);
+    let tableY = drawTableHeader(lineY2);
     doc.fontSize(5).font('Helvetica');
 
-    // Rubriques
-    rubriques.forEach(rubrique => {
-      x = pageMargin;
-      
-      doc.rect(x, tableY, rubriquesWidth, rowHeight).stroke();
-      doc.font('Helvetica-Bold').text(rubrique.label.substring(0, 18), x + 2, tableY + 3, { 
-        width: rubriquesWidth - 4, 
-        align: 'left' 
-      });
-      doc.font('Helvetica');
-      x += rubriquesWidth;
+    // Lignes de données - Une ligne par centre (10 par page)
+    let currentPage = 1;
+    let centresOnCurrentPage = 0;
 
-      const rubricData = donnees.rubriques[rubrique.key];
-      rubricData.centres.forEach(val => {
-        doc.rect(x, tableY, centreWidth, rowHeight).stroke();
-        doc.text(val.toString(), x + 1, tableY + 3, { width: centreWidth - 2, align: 'center' });
-        x += centreWidth;
-      });
-
-      doc.rect(x, tableY, totalWidth, rowHeight).fillAndStroke('#f0f0f0', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').text(rubricData.total.toString(), x + 1, tableY + 3, { 
-        width: totalWidth - 2, 
-        align: 'center' 
-      });
-      doc.font('Helvetica').fillColor('#000');
-
-      tableY += rowHeight;
-    });
-
-    // Partis
-    partisData.forEach(parti => {
-      // Vérifier si on doit passer à une nouvelle page
-      if (tableY + rowHeight > pageHeight + pageMargin - 60) {
-        doc.addPage({ margin: 20, layout: 'landscape' });
-        tableY = pageMargin + 20;
+    centres.forEach((centre, centreIndex) => {
+      // Si on a atteint 10 centres sur cette page, passer à une nouvelle page
+      if (centresOnCurrentPage >= CENTRES_PAR_PAGE) {
+        currentPage++;
+        doc.addPage({ margin: 20, size: 'A4', layout: 'landscape' });
+        lineY2 = drawPageHeader(currentPage, totalPages);
+        tableY = drawTableHeader(lineY2);
+        doc.fontSize(5).font('Helvetica');
+        centresOnCurrentPage = 0;
       }
 
-      x = pageMargin;
+      let x = pageMargin;
       
-      doc.rect(x, tableY, rubriquesWidth, rowHeight).stroke();
-      doc.font('Helvetica-Bold').text((parti.sigle || parti.nom).substring(0, 18), x + 2, tableY + 3, { 
-        width: rubriquesWidth - 4, 
+      // Nom du centre seulement
+      doc.rect(x, tableY, centreColWidth, rowHeight).stroke();
+      const nomCourt = centre.nom.length > 20 ? centre.nom.substring(0, 18) + '..' : centre.nom;
+      doc.font('Helvetica-Bold').fontSize(4).text(nomCourt, x + 2, tableY + 4, { 
+        width: centreColWidth - 4, 
         align: 'left' 
       });
       doc.font('Helvetica');
-      x += rubriquesWidth;
+      x += centreColWidth;
 
-      const partiData = donnees.partis[parti.id];
-      partiData.centres.forEach(val => {
-        doc.rect(x, tableY, centreWidth, rowHeight).stroke();
-        doc.text(val.toString(), x + 1, tableY + 3, { width: centreWidth - 2, align: 'center' });
-        x += centreWidth;
+      // Valeurs des rubriques pour ce centre
+      rubriques.forEach(rubrique => {
+        const val = donnees.rubriques[rubrique.key].centres[centreIndex];
+        doc.rect(x, tableY, dataColWidth, rowHeight).stroke();
+        doc.fontSize(5).text(val.toString(), x + 1, tableY + 4, { width: dataColWidth - 2, align: 'center' });
+        x += dataColWidth;
       });
 
-      doc.rect(x, tableY, totalWidth, rowHeight).fillAndStroke('#e8e8e8', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').text(partiData.total.toString(), x + 1, tableY + 3, { 
-        width: totalWidth - 2, 
+      // Valeurs des partis pour ce centre + calcul total voix
+      let totalVoixCentre = 0;
+      partisData.forEach(parti => {
+        const val = donnees.partis[parti.id].centres[centreIndex];
+        totalVoixCentre += val;
+        doc.rect(x, tableY, dataColWidth, rowHeight).fillAndStroke('#fafafa', '#000');
+        doc.fillColor('#000').fontSize(5).text(val.toString(), x + 1, tableY + 4, { width: dataColWidth - 2, align: 'center' });
+        x += dataColWidth;
+      });
+
+      // Colonne TOTAL VOIX pour ce centre
+      doc.rect(x, tableY, totalVoixColWidth, rowHeight).fillAndStroke('#f0f0f0', '#000');
+      doc.fillColor('#000').font('Helvetica-Bold').fontSize(5).text(totalVoixCentre.toString(), x + 1, tableY + 4, { 
+        width: totalVoixColWidth - 2, 
         align: 'center' 
       });
-      doc.font('Helvetica').fillColor('#000');
+      doc.font('Helvetica');
 
       tableY += rowHeight;
+      centresOnCurrentPage++;
     });
 
-    // Ligne TOTAL VOIX
-    x = pageMargin;
-    doc.rect(x, tableY, rubriquesWidth, rowHeight).fillAndStroke('#d0d0d0', '#000');
-    doc.fillColor('#000').font('Helvetica-Bold').text('TOTAL VOIX', x + 2, tableY + 3, { 
-      width: rubriquesWidth - 4, 
+    // Ligne TOTAL (sur la dernière page)
+    let x = pageMargin;
+    doc.rect(x, tableY, centreColWidth, rowHeight).fillAndStroke('#d0d0d0', '#000');
+    doc.fillColor('#000').font('Helvetica-Bold').fontSize(5).text('TOTAL', x + 2, tableY + 4, { 
+      width: centreColWidth - 4, 
       align: 'center' 
     });
-    x += rubriquesWidth;
+    x += centreColWidth;
 
-    centres.forEach((centre, index) => {
-      let total = 0;
-      partisData.forEach(parti => {
-        total += donnees.partis[parti.id].centres[index];
-      });
-
-      doc.rect(x, tableY, centreWidth, rowHeight).fillAndStroke('#d0d0d0', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').text(total.toString(), x + 1, tableY + 3, { 
-        width: centreWidth - 2, 
+    // Totaux des rubriques
+    rubriques.forEach(rubrique => {
+      const total = donnees.rubriques[rubrique.key].total;
+      doc.rect(x, tableY, dataColWidth, rowHeight).fillAndStroke('#e0e0e0', '#000');
+      doc.fillColor('#000').font('Helvetica-Bold').fontSize(5).text(total.toString(), x + 1, tableY + 4, { 
+        width: dataColWidth - 2, 
         align: 'center' 
       });
-      x += centreWidth;
+      x += dataColWidth;
     });
 
-    const totalGeneral = partisData.reduce((sum, parti) => sum + donnees.partis[parti.id].total, 0);
-    doc.rect(x, tableY, totalWidth, rowHeight).fillAndStroke('#c0c0c0', '#000');
-    doc.fillColor('#000').font('Helvetica-Bold').text(totalGeneral.toString(), x + 1, tableY + 3, { 
-      width: totalWidth - 2, 
+    // Totaux des partis
+    let totalGeneralVoix = 0;
+    partisData.forEach(parti => {
+      const total = donnees.partis[parti.id].total;
+      totalGeneralVoix += total;
+      doc.rect(x, tableY, dataColWidth, rowHeight).fillAndStroke('#c0c0c0', '#000');
+      doc.fillColor('#000').font('Helvetica-Bold').fontSize(5).text(total.toString(), x + 1, tableY + 4, { 
+        width: dataColWidth - 2, 
+        align: 'center' 
+      });
+      x += dataColWidth;
+    });
+
+    // Total général des voix
+    doc.rect(x, tableY, totalVoixColWidth, rowHeight).fillAndStroke('#b0b0b0', '#000');
+    doc.fillColor('#000').font('Helvetica-Bold').fontSize(5).text(totalGeneralVoix.toString(), x + 1, tableY + 4, { 
+      width: totalVoixColWidth - 2, 
       align: 'center' 
     });
+    doc.font('Helvetica').fillColor('#000');
 
     // === FOOTER ===
     const footerY = Math.min(tableY + 30, pageHeight + pageMargin - 50);

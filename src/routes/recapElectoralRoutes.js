@@ -54,7 +54,7 @@ router.get(
 );
 
 router.get(
-    '/expoarrondissementIdrts/centre/:electionId/:centreId/pdf',
+    '/exports/centre/:electionId/:centreId/pdf',
     authenticate,
     authorize('ADMIN', 'SUPER_ADMIN'),
     recapElectoralController.exportCentreDetailPDF
