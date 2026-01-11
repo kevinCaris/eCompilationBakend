@@ -654,6 +654,7 @@ const getCompilationDashboard = async (id) => {
             sa: p.sa,
             nombreInscrits: p.nombreInscrits,
             nombreVotants: p.nombreVotants,
+            bulletinsNuls: p.bulletinsNuls,
             suffragesExprimes: p.suffragesExprimes,
             tauxParticipation: p.tauxParticipation,
             resultPartis: p.resultPartis.map(rp => ({

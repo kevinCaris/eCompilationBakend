@@ -2670,6 +2670,491 @@ const exportRecapGeneralResultatsPDF = async (req, res, next) => {
   }
 };
 
+// ============ EXPORT RÉCAPITULATIF DES HORAIRES PAR ARRONDISSEMENT PDF ============
+const exportRecapHorairesPDF = async (req, res, next) => {
+  try {
+    const { electionId, arrondissementId } = req.params;
+    const PDFDocument = require('pdfkit');
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
+    // Récupérer l'arrondissement avec ses données
+    const arrondissement = await prisma.arrondissement.findUnique({
+      where: { id: arrondissementId },
+      include: {
+        circonscription: {
+          include: {
+            commune: {
+              include: {
+                departement: true
+              }
+            }
+          }
+        },
+        quartiers: {
+          orderBy: { nom: 'asc' },
+          include: {
+            centresDeVote: {
+              orderBy: { nom: 'asc' },
+              include: {
+                postesDeVote: {
+                  orderBy: { numero: 'asc' },
+                  include: {
+                    resultSaisies: {
+                      where: { electionId },
+                      select: {
+                        dateOuverture: true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!arrondissement) {
+      await prisma.$disconnect();
+      return res.status(404).json(error('Arrondissement non trouvé', 404));
+    }
+
+    // Récupérer l'élection
+    const election = await prisma.election.findUnique({
+      where: { id: electionId }
+    });
+
+    if (!election) {
+      await prisma.$disconnect();
+      return res.status(404).json(error('Élection non trouvée', 404));
+    }
+
+    await prisma.$disconnect();
+
+    // Convertir en objets simples
+    const arrondissementData = JSON.parse(JSON.stringify(arrondissement));
+    const electionData = JSON.parse(JSON.stringify(election));
+
+    // Collecter tous les centres avec leurs données
+    const centres = [];
+    arrondissementData.quartiers.forEach(quartier => {
+      quartier.centresDeVote.forEach(centre => {
+        centres.push({
+          ...centre,
+          quartierNom: quartier.nom
+        });
+      });
+    });
+
+    if (centres.length === 0) {
+      return res.status(404).json(error('Aucun centre de vote trouvé dans cet arrondissement', 404));
+    }
+
+    // Fonction pour formater une heure
+    const formatTime = (dateValue) => {
+      if (!dateValue) return '--:--';
+      const d = new Date(dateValue);
+      if (isNaN(d.getTime())) return '--:--';
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    };
+
+    // Fonction pour calculer heure + 10h
+    const addTenHours = (dateValue) => {
+      if (!dateValue) return '--:--';
+      const d = new Date(dateValue);
+      if (isNaN(d.getTime())) return '--:--';
+      d.setHours(d.getHours() + 10);
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    };
+
+    // Calculer les statistiques globales
+    let totalCentres = centres.length;
+    let totalPostes = 0;
+    let postesAvecHoraires = 0;
+
+    centres.forEach(centre => {
+      totalPostes += centre.postesDeVote.length;
+      centre.postesDeVote.forEach(poste => {
+        if (poste.resultSaisies && poste.resultSaisies.length > 0 && poste.resultSaisies[0].dateOuverture) {
+          postesAvecHoraires++;
+        }
+      });
+    });
+
+    // ============ CRÉATION DU PDF ============
+    const doc = new PDFDocument({ 
+      margin: 20, 
+      size: 'A4', 
+      layout: 'portrait',
+      bufferPages: true
+    });
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="recap_horaires_${arrondissementId}_${Date.now()}.pdf"`);
+    doc.pipe(res);
+
+    const pageMargin = 20;
+    const pageWidth = 595 - (pageMargin * 2);
+    const pageHeight = 842 - (pageMargin * 2);
+
+    // ============ FONCTION DESSINER EN-TÊTE OFFICIEL ============
+    const drawOfficialHeader = (pageNum, totalPages) => {
+      const headerY = pageMargin;
+      
+      // Logo central
+      const logoPath = path.join(__dirname, '../assets/images/logo_benin.jpeg');
+      const logoSize = 35;
+      try {
+        if (fs.existsSync(logoPath)) {
+          doc.image(logoPath, (pageWidth / 2) - (logoSize / 2) + pageMargin, headerY, { 
+            width: logoSize, 
+            height: logoSize 
+          });
+        }
+      } catch (err) {
+        console.error('Erreur chargement logo:', err);
+      }
+
+      // Blason
+      const coatOfArmsPath = path.join(__dirname, '../assets/images/Coat_of_arms_of_Benin.png');
+      const coatOfArmsSize = 30;
+      try {
+        if (fs.existsSync(coatOfArmsPath)) {
+          doc.image(coatOfArmsPath, pageMargin, headerY, { 
+            width: coatOfArmsSize, 
+            height: coatOfArmsSize 
+          });
+        }
+      } catch (err) {
+        console.error('Erreur chargement blason:', err);
+      }
+
+      // Texte ministère
+      const blocLeftX = pageMargin + coatOfArmsSize + 8;
+      const blocWidth = 100;
+      const leftTextY = headerY + 3;
+      doc.fontSize(6).font('Helvetica-Bold');
+      doc.text('MINISTÈRE DE LA', blocLeftX, leftTextY, { width: blocWidth, align: 'left' });
+      doc.text('DÉCENTRALISATION ET DE LA', blocLeftX, leftTextY + 7, { width: blocWidth, align: 'left' });
+      doc.text('GOUVERNANCE LOCALE', blocLeftX, leftTextY + 14, { width: blocWidth, align: 'left' });
+
+      // Ligne drapeau
+      const flagLineY = leftTextY + 24;
+      const flagLineHeight = 4;
+      const flagLineWidth = 90;
+      const colorWidth = flagLineWidth / 3;
+      doc.rect(blocLeftX, flagLineY, colorWidth, flagLineHeight).fill('#007A5E');
+      doc.rect(blocLeftX + colorWidth, flagLineY, colorWidth, flagLineHeight).fill('#FCD116');
+      doc.rect(blocLeftX + colorWidth * 2, flagLineY, colorWidth, flagLineHeight).fill('#CE1126');
+      
+      doc.fontSize(6).font('Helvetica').fillColor('#000');
+      doc.text('MAIRIE DE COTONOU', blocLeftX, flagLineY + 6, { width: blocWidth, align: 'left' });
+      doc.fontSize(6).font('Helvetica-Bold').fillColor('#000');
+      doc.text('RÉPUBLIQUE DU BÉNIN', blocLeftX, flagLineY + 14, { width: blocWidth, align: 'left' });
+      
+      // Coordonnées droite
+      const rightX = pageWidth - 100;
+      doc.fontSize(6).font('Helvetica');
+      doc.text('01 BP: 358 COTONOU', rightX, leftTextY, { width: 120, align: 'right' });
+      doc.text('TÉL: 229 21.31.37.70', rightX, leftTextY + 7, { width: 120, align: 'right' });
+      doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 14, { width: 120, align: 'right' });
+
+      const lineY1 = flagLineY + 26;
+      doc.moveTo(pageMargin, lineY1).lineTo(pageMargin + pageWidth, lineY1).stroke();
+
+      // Titre principal
+      doc.fontSize(12).font('Helvetica-Bold');
+      doc.text('RÉCAPITULATIF DES HORAIRES', pageMargin, lineY1 + 6, { 
+        width: pageWidth, 
+        align: 'center' 
+      });
+      doc.fontSize(10).font('Helvetica-Bold');
+      doc.text('D\'OUVERTURE ET DE FERMETURE', pageMargin, lineY1 + 20, { 
+        width: pageWidth, 
+        align: 'center' 
+      });
+
+      // Infos géographiques
+      const departement = arrondissementData.circonscription?.commune?.departement?.nom || '';
+      const commune = arrondissementData.circonscription?.commune?.nom || '';
+      doc.fontSize(8).font('Helvetica');
+      const geoY = lineY1 + 36;
+      doc.text(`Département: ${departement}  |  Commune: ${commune}  |  Arrondissement: ${arrondissementData.nom}`, pageMargin, geoY, { 
+        width: pageWidth, 
+        align: 'center' 
+      });
+      doc.text(`Élection: ${electionData.type} du ${new Date(electionData.dateVote).toLocaleDateString('fr-FR')}`, pageMargin, geoY + 12, { 
+        width: pageWidth, 
+        align: 'center' 
+      });
+
+      // Numéro de page
+      doc.fontSize(7).fillColor('#666');
+      doc.text(`Page ${pageNum} / ${totalPages}`, pageWidth - 30, geoY + 12, { width: 50, align: 'right' });
+      doc.fillColor('#000');
+
+      const lineY2 = geoY + 26;
+      doc.moveTo(pageMargin, lineY2).lineTo(pageMargin + pageWidth, lineY2).stroke();
+
+      return lineY2;
+    };
+
+    // Calculer le nombre de pages nécessaires
+    const centresPerPage = 4; // Nombre de centres par page après la première
+    const totalPages = Math.ceil((centres.length) / centresPerPage) + 1; // +1 pour la page récap
+    let currentPage = 1;
+
+    // ============ PAGE 1: STATISTIQUES ET PREMIERS CENTRES ============
+    let contentY = drawOfficialHeader(currentPage, totalPages);
+    contentY += 15;
+
+    // Section Statistiques Globales
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1E3A8A');
+    doc.text('STATISTIQUES GLOBALES', pageMargin, contentY);
+    doc.fillColor('#000');
+    contentY += 12;
+
+    // Box statistiques
+    const statsBoxWidth = pageWidth;
+    const statsBoxHeight = 50;
+    doc.rect(pageMargin, contentY, statsBoxWidth, statsBoxHeight).stroke();
+    
+    doc.fontSize(9).font('Helvetica');
+    const statsY = contentY + 12;
+    const col1X = pageMargin + 20;
+    const col2X = pageMargin + 200;
+    const col3X = pageMargin + 380;
+
+    doc.font('Helvetica').text('Nombre total de Centres:', col1X, statsY);
+    doc.font('Helvetica-Bold').text(totalCentres.toString(), col1X + 130, statsY);
+
+    doc.font('Helvetica').text('Nombre total de Postes:', col2X, statsY);
+    doc.font('Helvetica-Bold').text(totalPostes.toString(), col2X + 130, statsY);
+
+    doc.font('Helvetica').text('Postes avec horaires:', col3X, statsY);
+    doc.font('Helvetica-Bold').text(postesAvecHoraires.toString(), col3X + 110, statsY);
+
+    contentY += statsBoxHeight + 15;
+
+    // ============ AFFICHAGE DES CENTRES ============
+    const rowHeight = 18;
+    const colPoste = 80;
+    const colOuverture = 100;
+    const colFermeture = 100;
+    const tableWidth = colPoste + colOuverture + colFermeture;
+
+    centres.forEach((centre, centreIndex) => {
+      // Vérifier si on a besoin d'une nouvelle page
+      const estimatedHeight = 50 + (centre.postesDeVote.length + 1) * rowHeight;
+      if (contentY + estimatedHeight > pageHeight - 50) {
+        doc.addPage({ margin: 20, size: 'A4', layout: 'portrait' });
+        currentPage++;
+        contentY = drawOfficialHeader(currentPage, totalPages);
+        contentY += 15;
+      }
+
+      // Titre du centre
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#1E3A8A');
+      doc.text(`CENTRE: ${centre.nom.toUpperCase()}`, pageMargin, contentY);
+      doc.fontSize(8).font('Helvetica').fillColor('#666');
+      doc.text(`Quartier: ${centre.quartierNom}`, pageMargin + 350, contentY);
+      doc.fillColor('#000');
+      contentY += 15;
+
+      // En-tête tableau
+      let x = pageMargin;
+      doc.fontSize(8).font('Helvetica-Bold');
+      
+      doc.rect(x, contentY, colPoste, rowHeight).fillAndStroke('#1E3A8A', '#000');
+      doc.fillColor('#fff').text('POSTE', x + 5, contentY + 5, { width: colPoste - 10, align: 'center' });
+      x += colPoste;
+
+      doc.rect(x, contentY, colOuverture, rowHeight).fillAndStroke('#1E3A8A', '#000');
+      doc.fillColor('#fff').text('HEURE OUVERTURE', x + 5, contentY + 5, { width: colOuverture - 10, align: 'center' });
+      x += colOuverture;
+
+      doc.rect(x, contentY, colFermeture, rowHeight).fillAndStroke('#1E3A8A', '#000');
+      doc.fillColor('#fff').text('HEURE FERMETURE', x + 5, contentY + 5, { width: colFermeture - 10, align: 'center' });
+
+      contentY += rowHeight;
+      doc.fillColor('#000');
+
+      // Données des postes
+      doc.fontSize(8).font('Helvetica');
+      centre.postesDeVote.forEach((poste, idx) => {
+        const result = poste.resultSaisies && poste.resultSaisies.length > 0 ? poste.resultSaisies[0] : null;
+        const heureOuverture = result ? formatTime(result.dateOuverture) : '--:--';
+        const heureFermeture = result ? addTenHours(result.dateOuverture) : '--:--';
+        const bgColor = idx % 2 === 0 ? '#f8f9fa' : '#ffffff';
+
+        x = pageMargin;
+        
+        doc.rect(x, contentY, colPoste, rowHeight).fillAndStroke(bgColor, '#ccc');
+        doc.fillColor('#000').font('Helvetica-Bold').text(`Poste ${poste.numero || (idx + 1)}`, x + 5, contentY + 5, { width: colPoste - 10, align: 'center' });
+        x += colPoste;
+
+        doc.rect(x, contentY, colOuverture, rowHeight).fillAndStroke(bgColor, '#ccc');
+        doc.fillColor('#000').font('Helvetica').text(heureOuverture, x + 5, contentY + 5, { width: colOuverture - 10, align: 'center' });
+        x += colOuverture;
+
+        doc.rect(x, contentY, colFermeture, rowHeight).fillAndStroke(bgColor, '#ccc');
+        doc.fillColor('#000').font('Helvetica').text(heureFermeture, x + 5, contentY + 5, { width: colFermeture - 10, align: 'center' });
+
+        contentY += rowHeight;
+      });
+
+      contentY += 15; // Espace entre les centres
+    });
+
+    // ============ DERNIÈRE PAGE: TABLEAU RÉCAPITULATIF ============
+    doc.addPage({ margin: 20, size: 'A4', layout: 'portrait' });
+    currentPage++;
+    contentY = drawOfficialHeader(currentPage, totalPages);
+    contentY += 15;
+
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1E3A8A');
+    doc.text('TABLEAU RÉCAPITULATIF PAR CENTRE', pageMargin, contentY);
+    doc.fillColor('#000');
+    contentY += 15;
+
+    // En-tête tableau récap
+    const recapColCentre = 180;
+    const recapColPostes = 60;
+    const recapColOuv = 80;
+    const recapColFerm = 80;
+    const recapRowHeight = 16;
+
+    let rx = pageMargin;
+    doc.fontSize(7).font('Helvetica-Bold');
+    
+    doc.rect(rx, contentY, recapColCentre, recapRowHeight).fillAndStroke('#1E3A8A', '#000');
+    doc.fillColor('#fff').text('CENTRE DE VOTE', rx + 5, contentY + 4, { width: recapColCentre - 10 });
+    rx += recapColCentre;
+
+    doc.rect(rx, contentY, recapColPostes, recapRowHeight).fillAndStroke('#1E3A8A', '#000');
+    doc.fillColor('#fff').text('NB POSTES', rx + 2, contentY + 4, { width: recapColPostes - 4, align: 'center' });
+    rx += recapColPostes;
+
+    doc.rect(rx, contentY, recapColOuv, recapRowHeight).fillAndStroke('#1E3A8A', '#000');
+    doc.fillColor('#fff').text('OUVERT. MOY.', rx + 2, contentY + 4, { width: recapColOuv - 4, align: 'center' });
+    rx += recapColOuv;
+
+    doc.rect(rx, contentY, recapColFerm, recapRowHeight).fillAndStroke('#1E3A8A', '#000');
+    doc.fillColor('#fff').text('FERMET. MOY.', rx + 2, contentY + 4, { width: recapColFerm - 4, align: 'center' });
+
+    contentY += recapRowHeight;
+    doc.fillColor('#000');
+
+    // Données récap par centre
+    doc.fontSize(7).font('Helvetica');
+    let totalPostesGlobal = 0;
+    let totalMinutesOuv = 0;
+    let totalMinutesFerm = 0;
+    let countHoraires = 0;
+
+    centres.forEach((centre, idx) => {
+      const bgColor = idx % 2 === 0 ? '#f8f9fa' : '#ffffff';
+      const nbPostes = centre.postesDeVote.length;
+      totalPostesGlobal += nbPostes;
+
+      // Calculer moyenne horaires du centre
+      let sumMinutesOuv = 0;
+      let sumMinutesFerm = 0;
+      let countCentre = 0;
+
+      centre.postesDeVote.forEach(poste => {
+        const result = poste.resultSaisies && poste.resultSaisies.length > 0 ? poste.resultSaisies[0] : null;
+        if (result && result.dateOuverture) {
+          const d = new Date(result.dateOuverture);
+          if (!isNaN(d.getTime())) {
+            sumMinutesOuv += d.getHours() * 60 + d.getMinutes();
+            sumMinutesFerm += (d.getHours() + 10) * 60 + d.getMinutes();
+            countCentre++;
+          }
+        }
+      });
+
+      totalMinutesOuv += sumMinutesOuv;
+      totalMinutesFerm += sumMinutesFerm;
+      countHoraires += countCentre;
+
+      const moyOuv = countCentre > 0 ? Math.floor(sumMinutesOuv / countCentre) : null;
+      const moyFerm = countCentre > 0 ? Math.floor(sumMinutesFerm / countCentre) : null;
+      const moyOuvStr = moyOuv !== null ? `${String(Math.floor(moyOuv / 60)).padStart(2, '0')}:${String(moyOuv % 60).padStart(2, '0')}` : '--:--';
+      const moyFermStr = moyFerm !== null ? `${String(Math.floor(moyFerm / 60) % 24).padStart(2, '0')}:${String(moyFerm % 60).padStart(2, '0')}` : '--:--';
+
+      rx = pageMargin;
+      
+      doc.rect(rx, contentY, recapColCentre, recapRowHeight).fillAndStroke(bgColor, '#ccc');
+      doc.fillColor('#000').font('Helvetica-Bold').text(centre.nom.substring(0, 35), rx + 3, contentY + 4, { width: recapColCentre - 6 });
+      rx += recapColCentre;
+
+      doc.rect(rx, contentY, recapColPostes, recapRowHeight).fillAndStroke(bgColor, '#ccc');
+      doc.fillColor('#000').font('Helvetica').text(nbPostes.toString(), rx + 2, contentY + 4, { width: recapColPostes - 4, align: 'center' });
+      rx += recapColPostes;
+
+      doc.rect(rx, contentY, recapColOuv, recapRowHeight).fillAndStroke(bgColor, '#ccc');
+      doc.fillColor('#000').font('Helvetica').text(moyOuvStr, rx + 2, contentY + 4, { width: recapColOuv - 4, align: 'center' });
+      rx += recapColOuv;
+
+      doc.rect(rx, contentY, recapColFerm, recapRowHeight).fillAndStroke(bgColor, '#ccc');
+      doc.fillColor('#000').font('Helvetica').text(moyFermStr, rx + 2, contentY + 4, { width: recapColFerm - 4, align: 'center' });
+
+      contentY += recapRowHeight;
+    });
+
+    // Ligne TOTAL
+    const globalMoyOuv = countHoraires > 0 ? Math.floor(totalMinutesOuv / countHoraires) : null;
+    const globalMoyFerm = countHoraires > 0 ? Math.floor(totalMinutesFerm / countHoraires) : null;
+    const globalMoyOuvStr = globalMoyOuv !== null ? `${String(Math.floor(globalMoyOuv / 60)).padStart(2, '0')}:${String(globalMoyOuv % 60).padStart(2, '0')}` : '--:--';
+    const globalMoyFermStr = globalMoyFerm !== null ? `${String(Math.floor(globalMoyFerm / 60) % 24).padStart(2, '0')}:${String(globalMoyFerm % 60).padStart(2, '0')}` : '--:--';
+
+    rx = pageMargin;
+    doc.rect(rx, contentY, recapColCentre, recapRowHeight).fillAndStroke('#d0d0d0', '#000');
+    doc.fillColor('#000').font('Helvetica-Bold').text('TOTAL ARRONDISSEMENT', rx + 3, contentY + 4, { width: recapColCentre - 6 });
+    rx += recapColCentre;
+
+    doc.rect(rx, contentY, recapColPostes, recapRowHeight).fillAndStroke('#d0d0d0', '#000');
+    doc.fillColor('#000').font('Helvetica-Bold').text(totalPostesGlobal.toString(), rx + 2, contentY + 4, { width: recapColPostes - 4, align: 'center' });
+    rx += recapColPostes;
+
+    doc.rect(rx, contentY, recapColOuv, recapRowHeight).fillAndStroke('#d0d0d0', '#000');
+    doc.fillColor('#000').font('Helvetica-Bold').text(globalMoyOuvStr, rx + 2, contentY + 4, { width: recapColOuv - 4, align: 'center' });
+    rx += recapColOuv;
+
+    doc.rect(rx, contentY, recapColFerm, recapRowHeight).fillAndStroke('#d0d0d0', '#000');
+    doc.fillColor('#000').font('Helvetica-Bold').text(globalMoyFermStr, rx + 2, contentY + 4, { width: recapColFerm - 4, align: 'center' });
+
+    // Zone signature
+    contentY += recapRowHeight + 40;
+    doc.fontSize(8).font('Helvetica');
+    doc.text('Superviseur d\'Arrondissement: ............................................', pageMargin, contentY);
+    doc.text('Signature: ............................................', pageMargin + 300, contentY);
+    
+    contentY += 25;
+    doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, pageMargin, contentY);
+
+    // Footer
+    contentY += 30;
+    doc.fontSize(7).fillColor('#666');
+    doc.text(`Document généré le: ${new Date().toLocaleString('fr-FR')}`, pageMargin, contentY);
+
+    doc.end();
+
+  } catch (err) {
+    console.error('Erreur export récap horaires:', err);
+    if (!res.headersSent) {
+      return res.status(500).json(error(`Erreur lors de la génération du PDF: ${err.message}`, 500));
+    }
+    next(err);
+  }
+};
+
 // ============ EXPORT CENTRES PAR ARRONDISSEMENT PDF - POUR SA ============
 const exportCentresParArrondissementPDFForSA = async (req, res, next) => {
   try {
@@ -2724,5 +3209,6 @@ module.exports = {
   exportCirconscriptionPDF,
   exportCentresParArrondissementPDF,
   exportCentresParArrondissementPDFForSA,
-  exportRecapGeneralResultatsPDF
+  exportRecapGeneralResultatsPDF,
+  exportRecapHorairesPDF
 };

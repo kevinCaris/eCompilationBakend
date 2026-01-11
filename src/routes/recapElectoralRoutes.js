@@ -93,6 +93,15 @@ router.get(
     recapElectoralController.exportRecapGeneralResultatsPDF
 );
 
+// ============ EXPORT RÉCAPITULATIF DES HORAIRES PAR ARRONDISSEMENT ============
+// PDF avec heures d'ouverture et de fermeture (fermeture = ouverture + 10h)
+router.get(
+    '/exports/arrondissement/:electionId/:arrondissementId/horaires-pdf',
+    authenticate,
+    authorize('ADMIN', 'SUPER_ADMIN'),
+    recapElectoralController.exportRecapHorairesPDF
+);
+
 // ============ GET BY SA - Authentifié requis ============
 
 router.get(
@@ -108,11 +117,11 @@ router.get(
     recapElectoralController.getRecapitulatifElectoralById
 );
 
-// ============ UPDATE - SA seulement ============
+// ============ UPDATE - ADMIN seulement ============
 router.put(
     '/recapitulatifs-electoraux/:id',
     authenticate,
-    authorize('SA'),
+    authorize('ADMIN', 'SUPER_ADMIN'),
     recapElectoralController.updateRecapitulatifElectoral
 );
 
