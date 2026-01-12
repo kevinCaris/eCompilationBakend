@@ -68,6 +68,15 @@ router.get(
     recapElectoralController.exportCirconscriptionPDF
 );
 
+// ============ EXPORT COMMUNE PDF ============
+// Récapitulatif général de la commune par circonscription
+router.get(
+    '/exports/commune/:electionId/:communeId/pdf',
+    authenticate,
+    authorize('ADMIN', 'SUPER_ADMIN'),
+    recapElectoralController.exportCommunePDF
+);
+
 // ============ EXPORT CENTRES PAR ARRONDISSEMENT - Pour SA (téléchargement auto de son arrondissement) ============
 router.get(
     '/exports/arrondissement/:electionId/me/pdf',

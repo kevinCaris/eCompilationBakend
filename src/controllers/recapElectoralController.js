@@ -320,7 +320,7 @@ const exportTableauMatricielPDF = async (req, res, next) => {
     const availableWidth = pageWidth - rubriquesWidth;
     const colWidth = Math.max(25, Math.floor(availableWidth / totalDataCols)); // Min 25px par colonne
     
-    const rowHeight = 18;
+    const rowHeight = 30;
     const headerHeight = rowHeight * 3;
     
     // Vérifier si tout rentre sur une page, sinon paginer
@@ -367,8 +367,8 @@ const exportTableauMatricielPDF = async (req, res, next) => {
     const leftTextY = headerY + 5;
     doc.fontSize(7).font('Helvetica-Bold');
     doc.text('MINISTÈRE DE LA', blocLeftX, leftTextY, { width: blocWidth, align: 'left' });
-    doc.text('DÉCENTRALISATION ET DE LA', blocLeftX, leftTextY + 8, { width: blocWidth, align: 'left' });
-    doc.text('GOUVERNANCE LOCALE', blocLeftX, leftTextY + 16, { width: blocWidth, align: 'left' });
+    doc.text('DÉCENTRALISATION ET DE LA', blocLeftX, leftTextY + 10, { width: blocWidth, align: 'left' });
+    doc.text('GOUVERNANCE LOCALE', blocLeftX, leftTextY + 20, { width: blocWidth, align: 'left' });
     
     // Ligne décorative avec les couleurs du drapeau béninois (vert, jaune, rouge)
     const flagLineY = leftTextY + 28;
@@ -393,15 +393,15 @@ const exportTableauMatricielPDF = async (req, res, next) => {
     doc.fontSize(7).font('Helvetica');
     const rightX = pageWidth - 120;
     doc.text('01 BP: 358 COTONOU', rightX, leftTextY, { width: 120, align: 'right' });
-    doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 8, { width: 120, align: 'right' });
-    doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 16, { width: 120, align: 'right' });
+    doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 10, { width: 120, align: 'right' });
+    doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 20, { width: 120, align: 'right' });
     
     // Ligne horizontale après l'en-tête
     const lineY1 = flagLineY + 28;
     doc.moveTo(pageMargin, lineY1).lineTo(pageMargin + pageWidth, lineY1).stroke();
     
     // Titre principal centré
-    doc.fontSize(11).font('Helvetica-Bold');
+    doc.fontSize(13).font('Helvetica-Bold');
     doc.text('RÉCAPITULATIF ÉLECTORAL PAR CIRCONSCRIPTION', pageMargin, lineY1 + 8, { 
       width: pageWidth, 
       align: 'center' 
@@ -438,7 +438,7 @@ const exportTableauMatricielPDF = async (req, res, next) => {
       
       // Cellule RUBRIQUES
       doc.rect(x, y1, rubriquesWidth, headerHeight).stroke();
-      doc.fontSize(7).font('Helvetica-Bold').text('RUBRIQUES', x + 2, y1 + rowHeight + 2, { 
+      doc.fontSize(11).font('Helvetica-Bold').text('RUBRIQUES', x + 2, y1 + rowHeight + 4, { 
         width: rubriquesWidth - 4, align: 'center' 
       });
       x += rubriquesWidth;
@@ -450,19 +450,19 @@ const exportTableauMatricielPDF = async (req, res, next) => {
         
         // Niveau 1: Nom circonscription
         doc.rect(x, y1, circTotalWidth, rowHeight).stroke();
-        doc.fontSize(6).text(circ.nom.substring(0, 15), x + 1, y1 + 4, { 
+        doc.fontSize(10).text(circ.nom, x + 1, y1 + 5, { 
           width: circTotalWidth - 2, align: 'center' 
         });
         
         // Niveau 2: Arrondissements + Total
         const arrWidth = nbArr * colWidth;
         doc.rect(x, y2, arrWidth, rowHeight).stroke();
-        doc.fontSize(5).text('ARROND.', x + 1, y2 + 4, { 
+        doc.fontSize(10).text('ARROND.', x + 1, y2 + 5, { 
           width: arrWidth - 2, align: 'center' 
         });
         
         doc.rect(x + arrWidth, y2, colWidth, rowHeight * 2).stroke();
-        doc.fontSize(5).text('TOTAL', x + arrWidth + 1, y2 + rowHeight / 2 + 2, { 
+        doc.fontSize(10).text('TOTAL', x + arrWidth + 1, y2 + rowHeight / 2 + 4, { 
           width: colWidth - 2, align: 'center' 
         });
         
@@ -471,7 +471,7 @@ const exportTableauMatricielPDF = async (req, res, next) => {
         circ.arrondissements.forEach((arr, idx) => {
           doc.rect(xArr, y3, colWidth, rowHeight).stroke();
           const num = parseInt(arr.arrondissementCode) || (idx + 1);
-          doc.fontSize(5).text(`${num}`, xArr + 1, y3 + 4, { 
+          doc.fontSize(10).text(`${num}`, xArr + 1, y3 + 5, { 
             width: colWidth - 2, align: 'center' 
           });
           xArr += colWidth;
@@ -482,8 +482,8 @@ const exportTableauMatricielPDF = async (req, res, next) => {
       
       // Total Général
       doc.rect(x, y1, colWidth, headerHeight).stroke();
-      doc.fontSize(5).text('TOTAL', x + 1, y1 + rowHeight - 2, { width: colWidth - 2, align: 'center' });
-      doc.text('GÉN.', x + 1, y1 + rowHeight + 6, { width: colWidth - 2, align: 'center' });
+      doc.fontSize(10).text('TOTAL', x + 1, y1 + rowHeight, { width: colWidth - 2, align: 'center' });
+      doc.text('GÉN.', x + 1, y1 + rowHeight + 10, { width: colWidth - 2, align: 'center' });
       
       return startY + headerHeight;
     };
@@ -491,7 +491,7 @@ const exportTableauMatricielPDF = async (req, res, next) => {
     y = drawTableHeader(pageMargin, y);
     
     // === DESSINER LES DONNÉES ===
-    doc.fontSize(6).font('Helvetica');
+    doc.fontSize(10).font('Helvetica');
     
     lignes.forEach((ligne, ligneIndex) => {
       // Vérifier si on doit passer à une nouvelle page
@@ -506,10 +506,10 @@ const exportTableauMatricielPDF = async (req, res, next) => {
       
       // Colonne RUBRIQUES
       doc.rect(x, y, rubriquesWidth, rowHeight).stroke();
-      doc.font('Helvetica-Bold').fontSize(5).text(ligne.substring(0, 20), x + 2, y + 5, { 
+      doc.font('Helvetica-Bold').fontSize(10).text(ligne, x + 2, y + 6, { 
         width: rubriquesWidth - 4, align: 'left' 
       });
-      doc.font('Helvetica').fontSize(6);
+      doc.font('Helvetica').fontSize(10);
       x += rubriquesWidth;
       
       let totalGeneral = 0;
@@ -524,7 +524,7 @@ const exportTableauMatricielPDF = async (req, res, next) => {
           const valeur = colIndex >= 0 && matrice[ligne] ? (matrice[ligne][colIndex] || 0) : 0;
           
           doc.rect(x, y, colWidth, rowHeight).stroke();
-          doc.fontSize(5).text(valeur.toString(), x + 1, y + 5, { 
+          doc.fontSize(10).text(valeur.toString(), x + 1, y + 6, { 
             width: colWidth - 2, align: 'center' 
           });
           x += colWidth;
@@ -533,9 +533,9 @@ const exportTableauMatricielPDF = async (req, res, next) => {
         
         // Total circonscription
         doc.rect(x, y, colWidth, rowHeight).fillAndStroke('#e8e8e8', '#000');
-        doc.fillColor('#000').font('Helvetica-Bold').fontSize(5);
-        doc.text(totalCirc.toString(), x + 1, y + 5, { width: colWidth - 2, align: 'center' });
-        doc.font('Helvetica').fontSize(6);
+        doc.fillColor('#000').font('Helvetica-Bold').fontSize(10);
+        doc.text(totalCirc.toString(), x + 1, y + 6, { width: colWidth - 2, align: 'center' });
+        doc.font('Helvetica').fontSize(10);
         x += colWidth;
         
         totalGeneral += totalCirc;
@@ -543,15 +543,15 @@ const exportTableauMatricielPDF = async (req, res, next) => {
       
       // Total général
       doc.rect(x, y, colWidth, rowHeight).fillAndStroke('#d0d0d0', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').fontSize(5);
-      doc.text(totalGeneral.toString(), x + 1, y + 5, { width: colWidth - 2, align: 'center' });
-      doc.font('Helvetica').fontSize(6);
+      doc.fillColor('#000').font('Helvetica-Bold').fontSize(10);
+      doc.text(totalGeneral.toString(), x + 1, y + 6, { width: colWidth - 2, align: 'center' });
+      doc.font('Helvetica').fontSize(10);
       
       y += rowHeight;
     });
 
     // Footer
-    doc.fontSize(7).fillColor('#666').text(
+    doc.fontSize(9).fillColor('#666').text(
       `Généré le: ${new Date().toLocaleString('fr-FR')}`, 
       pageMargin, 
       Math.min(y + 15, pageHeight + pageMargin - 20), 
@@ -626,7 +626,10 @@ const exportCentreDetailPDF = async (req, res, next) => {
         postesDeVote: {
           include: {
             resultSaisies: {
-              where: { electionId },
+              where: { 
+                electionId,
+                status: 'VALIDEE'
+              },
               include: {
                 resultPartis: {
                   include: {
@@ -649,6 +652,16 @@ const exportCentreDetailPDF = async (req, res, next) => {
     const partis = await prisma.parti.findMany({
       where: { electionId }
     });
+
+    // Récupérer l'élection pour afficher le type
+    const election = await prisma.election.findUnique({
+      where: { id: electionId }
+    });
+
+    if (!election) {
+      await prisma.$disconnect();
+      return res.status(404).json(error('Élection non trouvée', 404));
+    }
 
     await prisma.$disconnect();
 
@@ -706,8 +719,8 @@ const exportCentreDetailPDF = async (req, res, next) => {
     const leftTextY = headerY + 5;
     doc.fontSize(7).font('Helvetica-Bold');
     doc.text('MINISTÈRE DE LA', blocLeftX, leftTextY, { width: blocWidth, align: 'left' });
-    doc.text('DÉCENTRALISATION ET DE LA', blocLeftX, leftTextY + 8, { width: blocWidth, align: 'left' });
-    doc.text('GOUVERNANCE LOCALE', blocLeftX, leftTextY + 16, { width: blocWidth, align: 'left' });
+    doc.text('DÉCENTRALISATION ET DE LA', blocLeftX, leftTextY + 10, { width: blocWidth, align: 'left' });
+    doc.text('GOUVERNANCE LOCALE', blocLeftX, leftTextY + 20, { width: blocWidth, align: 'left' });
 
     const flagLineY = leftTextY + 28;
     const flagLineHeight = 5;
@@ -727,14 +740,14 @@ const exportCentreDetailPDF = async (req, res, next) => {
     doc.fontSize(7).font('Helvetica');
     const rightX = pageWidth - 120;
     doc.text('01 BP: 358 COTONOU', rightX, leftTextY, { width: 120, align: 'right' });
-    doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 8, { width: 120, align: 'right' });
-    doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 16, { width: 120, align: 'right' });
+    doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 10, { width: 120, align: 'right' });
+    doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 20, { width: 120, align: 'right' });
 
     const lineY1 = flagLineY + 28;
     doc.moveTo(pageMargin, lineY1).lineTo(pageMargin + pageWidth, lineY1).stroke();
 
     // Titre
-    doc.fontSize(11).font('Helvetica-Bold');
+    doc.fontSize(14).font('Helvetica-Bold');
     doc.text('DÉTAIL DU CENTRE DE VOTE', pageMargin, lineY1 + 8, { 
       width: pageWidth, 
       align: 'center' 
@@ -746,15 +759,16 @@ const exportCentreDetailPDF = async (req, res, next) => {
     const arrondissement = centre.quartier?.arrondissement?.nom || '';
     const quartier = centre.quartier?.nom || '';
     
-    doc.fontSize(8).font('Helvetica');
+    doc.fontSize(10).font('Helvetica');
     const infoY = lineY1 + 24;
     doc.text(`Département: ${departement}`, pageMargin, infoY, { width: pageWidth / 2 });
     doc.text(`Commune: ${commune}`, pageMargin + pageWidth / 2, infoY, { width: pageWidth / 2 });
-    doc.text(`Arrondissement: ${arrondissement}`, pageMargin, infoY + 8, { width: pageWidth / 2 });
-    doc.text(`Quartier: ${quartier}`, pageMargin + pageWidth / 2, infoY + 8, { width: pageWidth / 2 });
-    doc.text(`Centre: ${centre.nom}`, pageMargin, infoY + 16, { width: pageWidth });
+    doc.text(`Arrondissement: ${arrondissement}`, pageMargin, infoY + 12, { width: pageWidth / 2 });
+    doc.text(`Quartier: ${quartier}`, pageMargin + pageWidth / 2, infoY + 12, { width: pageWidth / 2 });
+    doc.text(`Centre: ${centre.nom}`, pageMargin, infoY + 24, { width: pageWidth / 2 });
+    doc.text(`Élection: ${election.type} du 11/01/2026`, pageMargin + pageWidth / 2, infoY + 24, { width: pageWidth / 2 });
 
-    const lineY2 = infoY + 30;
+    const lineY2 = infoY + 40;
     doc.moveTo(pageMargin, lineY2).lineTo(pageMargin + pageWidth, lineY2).stroke();
 
     // Tableau
@@ -763,21 +777,21 @@ const exportCentreDetailPDF = async (req, res, next) => {
     const nbPostes = postes.length;
     const postWidth = Math.max(40, (pageWidth - 80) / (nbPostes + 1));
     const rubriquesWidth = 80;
-    const rowHeight = 16;
+    const rowHeight = 28;
 
     // En-tête du tableau
-    doc.fontSize(6).font('Helvetica-Bold');
+    doc.fontSize(11).font('Helvetica-Bold');
     let x = pageMargin;
     
     // Colonne rubriques
     doc.rect(x, tableY, rubriquesWidth, rowHeight).stroke();
-    doc.text('RUBRIQUES', x + 2, tableY + 4, { width: rubriquesWidth - 4, align: 'center' });
+    doc.text('RUBRIQUES', x + 2, tableY + 5, { width: rubriquesWidth - 4, align: 'center' });
     x += rubriquesWidth;
 
     // Colonnes postes
     postes.forEach((poste, index) => {
       doc.rect(x, tableY, postWidth, rowHeight).stroke();
-      doc.fontSize(5).text(`Poste ${index + 1}`, x + 1, tableY + 4, { 
+      doc.fontSize(10).text(`Poste ${index + 1}`, x + 1, tableY + 5, { 
         width: postWidth - 2, 
         align: 'center' 
       });
@@ -785,9 +799,9 @@ const exportCentreDetailPDF = async (req, res, next) => {
     });
 
     // Colonne TOTAL
-    doc.fontSize(6).font('Helvetica-Bold');
+    doc.fontSize(11).font('Helvetica-Bold');
     doc.rect(x, tableY, postWidth, rowHeight).stroke();
-    doc.text('TOTAL', x + 2, tableY + 4, { width: postWidth - 4, align: 'center' });
+    doc.text('TOTAL', x + 2, tableY + 5, { width: postWidth - 4, align: 'center' });
 
     tableY += rowHeight;
 
@@ -819,7 +833,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
       { key: 'tauxParticipation', label: 'Taux Participation (%)' }
     ];
 
-    doc.fontSize(5).font('Helvetica');
+    doc.fontSize(10).font('Helvetica');
 
     // Afficher les rubriques horaires en premier
     rubriquesHoraires.forEach(rubrique => {
@@ -827,7 +841,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
       
       // Label rubrique
       doc.rect(x, tableY, rubriquesWidth, rowHeight).stroke();
-      doc.font('Helvetica-Bold').text(rubrique.label, x + 2, tableY + 4, { 
+      doc.font('Helvetica-Bold').text(rubrique.label, x + 2, tableY + 6, { 
         width: rubriquesWidth - 4, 
         align: 'left' 
       });
@@ -840,7 +854,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
         const valeur = resultSaisi ? formatTime(resultSaisi[rubrique.key]) : '--:--';
         
         doc.rect(x, tableY, postWidth, rowHeight).stroke();
-        doc.text(valeur, x + 1, tableY + 4, { 
+        doc.text(valeur, x + 1, tableY + 6, { 
           width: postWidth - 2, 
           align: 'center' 
         });
@@ -849,7 +863,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
 
       // Total (non applicable pour les heures)
       doc.rect(x, tableY, postWidth, rowHeight).fillAndStroke('#f0f0f0', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').text('--', x + 1, tableY + 4, { 
+      doc.fillColor('#000').font('Helvetica-Bold').text('--', x + 1, tableY + 6, { 
         width: postWidth - 2, 
         align: 'center' 
       });
@@ -864,7 +878,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
       
       // Label rubrique
       doc.rect(x, tableY, rubriquesWidth, rowHeight).stroke();
-      doc.font('Helvetica-Bold').text(rubrique.label.substring(0, 20), x + 2, tableY + 4, { 
+      doc.font('Helvetica-Bold').text(rubrique.label, x + 2, tableY + 6, { 
         width: rubriquesWidth - 4, 
         align: 'left' 
       });
@@ -879,7 +893,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
         const valeur = resultSaisi ? (resultSaisi[rubrique.key] || 0) : 0;
         
         doc.rect(x, tableY, postWidth, rowHeight).stroke();
-        doc.text(valeur.toString(), x + 1, tableY + 4, { 
+        doc.text(valeur.toString(), x + 1, tableY + 6, { 
           width: postWidth - 2, 
           align: 'center' 
         });
@@ -889,7 +903,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
 
       // Total
       doc.rect(x, tableY, postWidth, rowHeight).fillAndStroke('#f0f0f0', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').text(total.toString(), x + 1, tableY + 4, { 
+      doc.fillColor('#000').font('Helvetica-Bold').text(total.toString(), x + 1, tableY + 6, { 
         width: postWidth - 2, 
         align: 'center' 
       });
@@ -903,7 +917,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
       x = pageMargin;
       
       doc.rect(x, tableY, rubriquesWidth, rowHeight).stroke();
-      doc.font('Helvetica-Bold').fontSize(5).text(`${parti.sigle || parti.nom}`, x + 2, tableY + 4, { 
+      doc.font('Helvetica-Bold').fontSize(10).text(`${parti.sigle || parti.nom}`, x + 2, tableY + 6, { 
         width: rubriquesWidth - 4, 
         align: 'left' 
       });
@@ -922,7 +936,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
         }
         
         doc.rect(x, tableY, postWidth, rowHeight).stroke();
-        doc.fontSize(5).text(voix.toString(), x + 1, tableY + 4, { 
+        doc.fontSize(10).text(voix.toString(), x + 1, tableY + 6, { 
           width: postWidth - 2, 
           align: 'center' 
         });
@@ -932,7 +946,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
 
       // Total parti
       doc.rect(x, tableY, postWidth, rowHeight).fillAndStroke('#e8e8e8', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').fontSize(5).text(totalVoix.toString(), x + 1, tableY + 4, { 
+      doc.fillColor('#000').font('Helvetica-Bold').fontSize(10).text(totalVoix.toString(), x + 1, tableY + 6, { 
         width: postWidth - 2, 
         align: 'center' 
       });
@@ -944,7 +958,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
     // Ligne TOTAL finale
     x = pageMargin;
     doc.rect(x, tableY, rubriquesWidth, rowHeight).fillAndStroke('#d0d0d0', '#000');
-    doc.fillColor('#000').font('Helvetica-Bold').fontSize(6).text('TOTAL', x + 2, tableY + 4, { 
+    doc.fillColor('#000').font('Helvetica-Bold').fontSize(11).text('TOTAL', x + 2, tableY + 6, { 
       width: rubriquesWidth - 4, 
       align: 'center' 
     });
@@ -956,7 +970,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
       const total = resultSaisi ? (resultSaisi.suffragesExprimes || 0) : 0;
       
       doc.rect(x, tableY, postWidth, rowHeight).fillAndStroke('#d0d0d0', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').fontSize(5).text(total.toString(), x + 1, tableY + 4, { 
+      doc.fillColor('#000').font('Helvetica-Bold').fontSize(10).text(total.toString(), x + 1, tableY + 6, { 
         width: postWidth - 2, 
         align: 'center' 
       });
@@ -970,7 +984,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
     }, 0);
 
     doc.rect(x, tableY, postWidth, rowHeight).fillAndStroke('#c0c0c0', '#000');
-    doc.fillColor('#000').font('Helvetica-Bold').fontSize(6).text(totalGeneral.toString(), x + 1, tableY + 4, { 
+    doc.fillColor('#000').font('Helvetica-Bold').fontSize(11).text(totalGeneral.toString(), x + 1, tableY + 6, { 
       width: postWidth - 2, 
       align: 'center' 
     });
@@ -1018,7 +1032,7 @@ const exportCentreDetailPDF = async (req, res, next) => {
     doc.fontSize(6).font('Helvetica').fillColor('#999').text('(Signature de l\'agent)', pageMargin + pageWidth - 150, footerY + 38);
 
     // Date génération en bas
-    doc.fontSize(7).fillColor('#666').font('Helvetica');
+    doc.fontSize(9).fillColor('#666').font('Helvetica');
     doc.text(
       `Généré le: ${new Date().toLocaleString('fr-FR')}`, 
       pageMargin, 
@@ -1060,7 +1074,10 @@ const exportCirconscriptionPDF = async (req, res, next) => {
                     postesDeVote: {
                       include: {
                         resultSaisies: {
-                          where: { electionId },
+                          where: { 
+                            electionId,
+                            status: 'VALIDEE'
+                          },
                           include: {
                             resultPartis: {
                               include: {
@@ -1089,6 +1106,16 @@ const exportCirconscriptionPDF = async (req, res, next) => {
     const partis = await prisma.parti.findMany({
       where: { electionId }
     });
+
+    // Récupérer l'élection pour afficher le type
+    const election = await prisma.election.findUnique({
+      where: { id: electionId }
+    });
+
+    if (!election) {
+      await prisma.$disconnect();
+      return res.status(404).json(error('Élection non trouvée', 404));
+    }
 
     await prisma.$disconnect();
 
@@ -1211,8 +1238,8 @@ const exportCirconscriptionPDF = async (req, res, next) => {
     const leftTextY = headerY + 5;
     doc.fontSize(7).font('Helvetica-Bold');
     doc.text('MINISTÈRE DE LA', blocLeftX, leftTextY, { width: blocWidth, align: 'left' });
-    doc.text('DÉCENTRALISATION ET DE LA', blocLeftX, leftTextY + 8, { width: blocWidth, align: 'left' });
-    doc.text('GOUVERNANCE LOCALE', blocLeftX, leftTextY + 16, { width: blocWidth, align: 'left' });
+    doc.text('DÉCENTRALISATION ET DE LA', blocLeftX, leftTextY + 10, { width: blocWidth, align: 'left' });
+    doc.text('GOUVERNANCE LOCALE', blocLeftX, leftTextY + 20, { width: blocWidth, align: 'left' });
 
     const flagLineY = leftTextY + 28;
     const flagLineHeight = 5;
@@ -1231,13 +1258,13 @@ const exportCirconscriptionPDF = async (req, res, next) => {
     const rightX = pageWidth - 120;
     doc.fontSize(7).font('Helvetica');
     doc.text('01 BP: 358 COTONOU', rightX, leftTextY, { width: 120, align: 'right' });
-    doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 8, { width: 120, align: 'right' });
-    doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 16, { width: 120, align: 'right' });
+    doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 10, { width: 120, align: 'right' });
+    doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 20, { width: 120, align: 'right' });
 
     const lineY1 = flagLineY + 28;
     doc.moveTo(pageMargin, lineY1).lineTo(pageMargin + pageWidth, lineY1).stroke();
 
-    doc.fontSize(11).font('Helvetica-Bold');
+    doc.fontSize(14).font('Helvetica-Bold');
     doc.text(`RÉCAPITULATIF DE LA CIRCONSCRIPTION ELECTORALE ${circonscription.nom}`, pageMargin, lineY1 + 8, { 
       width: pageWidth, 
       align: 'center' 
@@ -1245,13 +1272,17 @@ const exportCirconscriptionPDF = async (req, res, next) => {
 
     const departement = circonscription.commune?.departement?.nom || '';
     const commune = circonscription.commune?.nom || '';
-    doc.fontSize(8).font('Helvetica');
+    doc.fontSize(10).font('Helvetica');
     doc.text(`Département: ${departement}  |  Commune: ${commune}`, pageMargin, lineY1 + 24, { 
       width: pageWidth, 
       align: 'center' 
     });
+    doc.text(`Élection: ${election.type} du 11/01/2026`, pageMargin, lineY1 + 38, { 
+      width: pageWidth, 
+      align: 'center' 
+    });
 
-    const lineY2 = lineY1 + 40;
+    const lineY2 = lineY1 + 52;
     doc.moveTo(pageMargin, lineY2).lineTo(pageMargin + pageWidth, lineY2).stroke();
 
     // === TABLEAU ===
@@ -1259,38 +1290,38 @@ const exportCirconscriptionPDF = async (req, res, next) => {
     const nbArrond = arrondissements.length;
     const arrondWidth = Math.max(40, (pageWidth - 80) / (nbArrond + 1));
     const rubriquesWidth = 80;
-    const rowHeight = 14;
+    const rowHeight = 26;
 
     // En-tête
-    doc.fontSize(6).font('Helvetica-Bold');
+    doc.fontSize(11).font('Helvetica-Bold');
     let x = pageMargin;
     
     doc.rect(x, tableY, rubriquesWidth, rowHeight).stroke();
-    doc.text('RUBRIQUES', x + 2, tableY + 4, { width: rubriquesWidth - 4, align: 'center' });
+    doc.text('RUBRIQUES', x + 2, tableY + 5, { width: rubriquesWidth - 4, align: 'center' });
     x += rubriquesWidth;
 
     arrondissements.forEach((arr, index) => {
       doc.rect(x, tableY, arrondWidth, rowHeight).stroke();
-      doc.fontSize(5).text(`Arrond. ${arr.code || arr.nom}`, x + 1, tableY + 4, { 
+      doc.fontSize(10).text(`Arrond. ${arr.code || arr.nom}`, x + 1, tableY + 5, { 
         width: arrondWidth - 2, 
         align: 'center' 
       });
       x += arrondWidth;
     });
 
-    doc.fontSize(6).font('Helvetica-Bold');
+    doc.fontSize(11).font('Helvetica-Bold');
     doc.rect(x, tableY, arrondWidth, rowHeight).stroke();
-    doc.text('TOTAL', x + 2, tableY + 4, { width: arrondWidth - 4, align: 'center' });
+    doc.text('TOTAL', x + 2, tableY + 5, { width: arrondWidth - 4, align: 'center' });
 
     tableY += rowHeight;
-    doc.fontSize(5).font('Helvetica');
+    doc.fontSize(10).font('Helvetica');
 
     // Rubriques
     rubriques.forEach(rubrique => {
       x = pageMargin;
       
       doc.rect(x, tableY, rubriquesWidth, rowHeight).stroke();
-      doc.font('Helvetica-Bold').text(rubrique.label.substring(0, 18), x + 2, tableY + 2, { 
+      doc.font('Helvetica-Bold').text(rubrique.label, x + 2, tableY + 5, { 
         width: rubriquesWidth - 4, 
         align: 'left' 
       });
@@ -1300,12 +1331,12 @@ const exportCirconscriptionPDF = async (req, res, next) => {
       const rubricData = donnees.rubriques[rubrique.key];
       rubricData.arrondonissements.forEach(val => {
         doc.rect(x, tableY, arrondWidth, rowHeight).stroke();
-        doc.text(val.toString(), x + 1, tableY + 2, { width: arrondWidth - 2, align: 'center' });
+        doc.text(val.toString(), x + 1, tableY + 5, { width: arrondWidth - 2, align: 'center' });
         x += arrondWidth;
       });
 
       doc.rect(x, tableY, arrondWidth, rowHeight).fillAndStroke('#f0f0f0', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').text(rubricData.total.toString(), x + 1, tableY + 2, { 
+      doc.fillColor('#000').font('Helvetica-Bold').text(rubricData.total.toString(), x + 1, tableY + 5, { 
         width: arrondWidth - 2, 
         align: 'center' 
       });
@@ -1319,7 +1350,7 @@ const exportCirconscriptionPDF = async (req, res, next) => {
       x = pageMargin;
       
       doc.rect(x, tableY, rubriquesWidth, rowHeight).stroke();
-      doc.font('Helvetica-Bold').text((parti.sigle || parti.nom).substring(0, 18), x + 2, tableY + 2, { 
+      doc.font('Helvetica-Bold').text((parti.sigle || parti.nom), x + 2, tableY + 5, { 
         width: rubriquesWidth - 4, 
         align: 'left' 
       });
@@ -1329,12 +1360,12 @@ const exportCirconscriptionPDF = async (req, res, next) => {
       const partiData = donnees.partis[parti.id];
       partiData.arrondonissements.forEach(val => {
         doc.rect(x, tableY, arrondWidth, rowHeight).stroke();
-        doc.text(val.toString(), x + 1, tableY + 2, { width: arrondWidth - 2, align: 'center' });
+        doc.text(val.toString(), x + 1, tableY + 5, { width: arrondWidth - 2, align: 'center' });
         x += arrondWidth;
       });
 
       doc.rect(x, tableY, arrondWidth, rowHeight).fillAndStroke('#e8e8e8', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').text(partiData.total.toString(), x + 1, tableY + 2, { 
+      doc.fillColor('#000').font('Helvetica-Bold').text(partiData.total.toString(), x + 1, tableY + 5, { 
         width: arrondWidth - 2, 
         align: 'center' 
       });
@@ -1346,7 +1377,7 @@ const exportCirconscriptionPDF = async (req, res, next) => {
     // Ligne TOTAL
     x = pageMargin;
     doc.rect(x, tableY, rubriquesWidth, rowHeight).fillAndStroke('#d0d0d0', '#000');
-    doc.fillColor('#000').font('Helvetica-Bold').text('TOTAL VOIX', x + 2, tableY + 2, { 
+    doc.fillColor('#000').font('Helvetica-Bold').text('TOTAL VOIX', x + 2, tableY + 5, { 
       width: rubriquesWidth - 4, 
       align: 'center' 
     });
@@ -1359,7 +1390,7 @@ const exportCirconscriptionPDF = async (req, res, next) => {
       });
 
       doc.rect(x, tableY, arrondWidth, rowHeight).fillAndStroke('#d0d0d0', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').text(total.toString(), x + 1, tableY + 2, { 
+      doc.fillColor('#000').font('Helvetica-Bold').text(total.toString(), x + 1, tableY + 5, { 
         width: arrondWidth - 2, 
         align: 'center' 
       });
@@ -1368,13 +1399,425 @@ const exportCirconscriptionPDF = async (req, res, next) => {
 
     const totalGeneral = partis.reduce((sum, parti) => sum + donnees.partis[parti.id].total, 0);
     doc.rect(x, tableY, arrondWidth, rowHeight).fillAndStroke('#c0c0c0', '#000');
-    doc.fillColor('#000').font('Helvetica-Bold').text(totalGeneral.toString(), x + 1, tableY + 2, { 
+    doc.fillColor('#000').font('Helvetica-Bold').text(totalGeneral.toString(), x + 1, tableY + 5, { 
       width: arrondWidth - 2, 
       align: 'center' 
     });
 
     // === FOOTER ===
     const footerY = tableY + 30;
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#000');
+    doc.text('SIGNATURE', pageMargin, footerY);
+
+    doc.fontSize(10).font('Helvetica');
+    const col1X = pageMargin;
+    const col2X = pageMargin + pageWidth / 2;
+
+    doc.text('Nom et Prénom: .............................', col1X, footerY + 12);
+    doc.text('Signature: ............................', col2X, footerY + 12);
+
+    doc.text('Date: ________________', col1X, footerY + 28);
+    doc.fontSize(9).fillColor('#666');
+    doc.text(`Généré le: ${new Date().toLocaleString('fr-FR')}`, col2X, footerY + 28);
+
+    doc.end();
+
+  } catch (err) {
+    console.error('Erreur export circonscription:', err);
+    next(err);
+  }
+};
+
+// ============ EXPORT COMMUNE PDF ============
+const exportCommunePDF = async (req, res, next) => {
+  try {
+    const { electionId, communeId } = req.params;
+    const PDFDocument = require('pdfkit');
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
+    // Récupérer la commune avec toutes ses circonscriptions
+    const commune = await prisma.commune.findUnique({
+      where: { id: communeId },
+      include: {
+        departement: true,
+        circonscriptions: {
+          orderBy: { nom: 'asc' },
+          include: {
+            arrondissements: {
+              include: {
+                quartiers: {
+                  include: {
+                    centresDeVote: {
+                      include: {
+                        postesDeVote: {
+                          include: {
+                            resultSaisies: {
+                              where: { 
+                                electionId,
+                                status: 'VALIDEE'
+                              },
+                              include: {
+                                resultPartis: {
+                                  include: {
+                                    parti: true
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!commune) {
+      await prisma.$disconnect();
+      return res.status(404).json(error('Commune non trouvée', 404));
+    }
+
+    // Récupérer tous les partis de l'élection
+    const partis = await prisma.parti.findMany({
+      where: { electionId },
+      orderBy: { nom: 'asc' }
+    });
+
+    // Récupérer l'élection pour afficher le type
+    const election = await prisma.election.findUnique({
+      where: { id: electionId }
+    });
+
+    if (!election) {
+      await prisma.$disconnect();
+      return res.status(404).json(error('Élection non trouvée', 404));
+    }
+
+    await prisma.$disconnect();
+
+    // Fonction de formatage des nombres avec espace comme séparateur de milliers
+    const formatNumber = (num) => {
+      if (num === null || num === undefined) return '0';
+      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    };
+
+    // Calcul des données par circonscription
+    const circonscriptions = commune.circonscriptions;
+    const rubriques = [
+      { key: 'nombreInscrits', label: 'Nombre Inscrits' },
+      { key: 'nombreVotants', label: 'Nombre Votants' },
+      { key: 'suffragesExprimes', label: 'Suffrages Exprimés' },
+      { key: 'abstentions', label: 'Abstentions' },
+      { key: 'bulletinsNuls', label: 'Bulletins Nuls' },
+      { key: 'procurations', label: 'Procurations' },
+      { key: 'derogations', label: 'Dérogations' }
+    ];
+
+    // Fonction pour calculer les totaux par circonscription
+    const calculerTotauxCirconscription = (circonscription, rubriqueKey) => {
+      let total = 0;
+      circonscription.arrondissements.forEach(arrondissement => {
+        arrondissement.quartiers.forEach(quartier => {
+          quartier.centresDeVote.forEach(centre => {
+            centre.postesDeVote.forEach(poste => {
+              poste.resultSaisies.forEach(resultSaisi => {
+                total += resultSaisi[rubriqueKey] || 0;
+              });
+            });
+          });
+        });
+      });
+      return total;
+    };
+
+    // Fonction pour calculer les voix d'un parti par circonscription
+    const calculerVoixPartiCirconscription = (circonscription, partiId) => {
+      let total = 0;
+      circonscription.arrondissements.forEach(arrondissement => {
+        arrondissement.quartiers.forEach(quartier => {
+          quartier.centresDeVote.forEach(centre => {
+            centre.postesDeVote.forEach(poste => {
+              poste.resultSaisies.forEach(resultSaisi => {
+                const resultatParti = resultSaisi.resultPartis.find(rp => rp.partiId === partiId);
+                total += resultatParti ? (resultatParti.voix || 0) : 0;
+              });
+            });
+          });
+        });
+      });
+      return total;
+    };
+
+    // Préparer les données
+    const donnees = {
+      rubriques: {},
+      partis: {}
+    };
+
+    rubriques.forEach(rubrique => {
+      donnees.rubriques[rubrique.key] = {
+        label: rubrique.label,
+        circonscriptions: circonscriptions.map(circ => calculerTotauxCirconscription(circ, rubrique.key)),
+        total: 0
+      };
+      donnees.rubriques[rubrique.key].total = donnees.rubriques[rubrique.key].circonscriptions.reduce((a, b) => a + b, 0);
+    });
+
+    partis.forEach(parti => {
+      donnees.partis[parti.id] = {
+        nom: parti.sigle || parti.nom,
+        circonscriptions: circonscriptions.map(circ => calculerVoixPartiCirconscription(circ, parti.id)),
+        total: 0
+      };
+      donnees.partis[parti.id].total = donnees.partis[parti.id].circonscriptions.reduce((a, b) => a + b, 0);
+    });
+
+    // Créer le PDF
+    const doc = new PDFDocument({ 
+      margin: 20, 
+      size: 'A4', 
+      layout: 'landscape',
+      bufferPages: true
+    });
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="commune_${communeId}.pdf"`);
+    doc.pipe(res);
+
+    const pageMargin = 20;
+    const pageWidth = 842 - (pageMargin * 2);
+    const pageHeight = 595 - (pageMargin * 2);
+
+    // === EN-TÊTE OFFICIEL ===
+    const headerY = pageMargin;
+    const logoPath = path.join(__dirname, '../assets/images/logo_benin.jpeg');
+    const logoSize = 40;
+    
+    try {
+      if (fs.existsSync(logoPath)) {
+        doc.image(logoPath, (pageWidth / 2) - (logoSize / 2) + pageMargin, headerY, { 
+          width: logoSize, 
+          height: logoSize 
+        });
+      }
+    } catch (err) {
+      console.error('Erreur chargement logo:', err);
+    }
+
+    // Blason
+    const coatOfArmsPath = path.join(__dirname, '../assets/images/Coat_of_arms_of_Benin.png');
+    const coatOfArmsSize = 35;
+    try {
+      if (fs.existsSync(coatOfArmsPath)) {
+        doc.image(coatOfArmsPath, pageMargin, headerY, { 
+          width: coatOfArmsSize, 
+          height: coatOfArmsSize 
+        });
+      }
+    } catch (err) {
+      console.error('Erreur chargement blason:', err);
+    }
+
+    // Texte ministère
+    const blocLeftX = pageMargin + coatOfArmsSize + 10;
+    const blocWidth = 120;
+    const leftTextY = headerY + 5;
+    doc.fontSize(7).font('Helvetica-Bold');
+    doc.text('MINISTÈRE DE LA', blocLeftX, leftTextY, { width: blocWidth, align: 'left' });
+    doc.text('DÉCENTRALISATION ET DE LA', blocLeftX, leftTextY + 10, { width: blocWidth, align: 'left' });
+    doc.text('GOUVERNANCE LOCALE', blocLeftX, leftTextY + 20, { width: blocWidth, align: 'left' });
+
+    const flagLineY = leftTextY + 28;
+    const flagLineHeight = 5;
+    const flagLineWidth = 110;
+    const colorWidth = flagLineWidth / 3;
+    
+    doc.rect(blocLeftX, flagLineY, colorWidth, flagLineHeight).fill('#007A5E');
+    doc.rect(blocLeftX + colorWidth, flagLineY, colorWidth, flagLineHeight).fill('#FCD116');
+    doc.rect(blocLeftX + colorWidth * 2, flagLineY, colorWidth, flagLineHeight).fill('#CE1126');
+    
+    doc.fontSize(7).font('Helvetica').fillColor('#000');
+    doc.text('MAIRIE DE COTONOU', blocLeftX, flagLineY + 8, { width: blocWidth, align: 'left' });
+    doc.fontSize(7).font('Helvetica-Bold').fillColor('#000');
+    doc.text('RÉPUBLIQUE DU BÉNIN', blocLeftX, flagLineY + 18, { width: blocWidth, align: 'left' });
+
+    // Coordonnées droite
+    const rightX = pageWidth - 120;
+    doc.fontSize(7).font('Helvetica');
+    doc.text('01 BP: 358 COTONOU', rightX, leftTextY, { width: 120, align: 'right' });
+    doc.text('TÉL: 229 21.31.37.70 / 21.31.34.79', rightX, leftTextY + 10, { width: 120, align: 'right' });
+    doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 20, { width: 120, align: 'right' });
+
+    const lineY1 = flagLineY + 28;
+    doc.moveTo(pageMargin, lineY1).lineTo(pageMargin + pageWidth, lineY1).stroke();
+
+    doc.fontSize(14).font('Helvetica-Bold');
+    doc.text(`RÉCAPITULATIF GÉNÉRAL DE LA COMMUNE DE ${commune.nom.toUpperCase()}`, pageMargin, lineY1 + 8, { 
+      width: pageWidth, 
+      align: 'center' 
+    });
+
+    const departement = commune.departement?.nom || '';
+    doc.fontSize(10).font('Helvetica');
+    doc.text(`Département: ${departement}  |  Commune: ${commune.nom}`, pageMargin, lineY1 + 24, { 
+      width: pageWidth, 
+      align: 'center' 
+    });
+    doc.text(`Élection: ${election.type} du 11/01/2026`, pageMargin, lineY1 + 38, { 
+      width: pageWidth, 
+      align: 'center' 
+    });
+
+    const lineY2 = lineY1 + 52;
+    doc.moveTo(pageMargin, lineY2).lineTo(pageMargin + pageWidth, lineY2).stroke();
+
+    // === TABLEAU ===
+    let tableY = lineY2 + 10;
+    const nbCircons = circonscriptions.length;
+    const circonsWidth = Math.max(50, (pageWidth - 90) / (nbCircons + 1));
+    const rubriquesWidth = 90;
+    const rowHeight = 26;
+
+    // En-tête
+    doc.fontSize(11).font('Helvetica-Bold');
+    let x = pageMargin;
+    
+    doc.rect(x, tableY, rubriquesWidth, rowHeight).fillAndStroke('#1E3A8A', '#000');
+    doc.fillColor('#fff').text('RUBRIQUES', x + 2, tableY + 5, { width: rubriquesWidth - 4, align: 'center' });
+    x += rubriquesWidth;
+
+    circonscriptions.forEach((circ, index) => {
+      doc.rect(x, tableY, circonsWidth, rowHeight).fillAndStroke('#1E3A8A', '#000');
+      doc.fillColor('#fff').fontSize(10).text(`${circ.nom || `Circ. ${index + 1}`}`, x + 1, tableY + 5, { 
+        width: circonsWidth - 2, 
+        align: 'center' 
+      });
+      x += circonsWidth;
+    });
+
+    doc.rect(x, tableY, circonsWidth, rowHeight).fillAndStroke('#1E3A8A', '#000');
+    doc.fillColor('#fff').fontSize(11).font('Helvetica-Bold').text('TOTAL', x + 2, tableY + 5, { width: circonsWidth - 4, align: 'center' });
+
+    tableY += rowHeight;
+    doc.fillColor('#000');
+
+    // Rubriques
+    doc.fontSize(10).font('Helvetica');
+    rubriques.forEach((rubrique, idx) => {
+      x = pageMargin;
+      const bgColor = idx % 2 === 0 ? '#f8f9fa' : '#ffffff';
+      
+      doc.rect(x, tableY, rubriquesWidth, rowHeight).fillAndStroke(bgColor, '#ccc');
+      doc.fillColor('#000').font('Helvetica-Bold').text(rubrique.label, x + 2, tableY + 5, { 
+        width: rubriquesWidth - 4, 
+        align: 'left' 
+      });
+      x += rubriquesWidth;
+
+      const data = donnees.rubriques[rubrique.key];
+      data.circonscriptions.forEach(valeur => {
+        doc.rect(x, tableY, circonsWidth, rowHeight).fillAndStroke(bgColor, '#ccc');
+        doc.fillColor('#000').font('Helvetica').text(formatNumber(valeur), x + 1, tableY + 4, { 
+          width: circonsWidth - 2, 
+          align: 'center' 
+        });
+        x += circonsWidth;
+      });
+
+      doc.rect(x, tableY, circonsWidth, rowHeight).fillAndStroke('#d0d0d0', '#ccc');
+      doc.fillColor('#000').font('Helvetica-Bold').text(formatNumber(data.total), x + 1, tableY + 4, { 
+        width: circonsWidth - 2, 
+        align: 'center' 
+      });
+
+      tableY += rowHeight;
+    });
+
+    // Ligne séparatrice pour les partis
+    tableY += 5;
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1E3A8A');
+    doc.text('RÉSULTATS PAR PARTI POLITIQUE', pageMargin, tableY);
+    tableY += 12;
+    doc.fillColor('#000');
+
+    // Partis
+    Object.values(donnees.partis).forEach((parti, idx) => {
+      x = pageMargin;
+      const bgColor = idx % 2 === 0 ? '#e8f4f8' : '#ffffff';
+      
+      doc.rect(x, tableY, rubriquesWidth, rowHeight).fillAndStroke(bgColor, '#ccc');
+      doc.fillColor('#000').font('Helvetica-Bold').fontSize(7).text(parti.nom, x + 2, tableY + 4, { 
+        width: rubriquesWidth - 4, 
+        align: 'left' 
+      });
+      x += rubriquesWidth;
+
+      parti.circonscriptions.forEach(valeur => {
+        doc.rect(x, tableY, circonsWidth, rowHeight).fillAndStroke(bgColor, '#ccc');
+        doc.fillColor('#000').font('Helvetica').text(formatNumber(valeur), x + 1, tableY + 4, { 
+          width: circonsWidth - 2, 
+          align: 'center' 
+        });
+        x += circonsWidth;
+      });
+
+      doc.rect(x, tableY, circonsWidth, rowHeight).fillAndStroke('#d0d0d0', '#ccc');
+      doc.fillColor('#000').font('Helvetica-Bold').text(formatNumber(parti.total), x + 1, tableY + 4, { 
+        width: circonsWidth - 2, 
+        align: 'center' 
+      });
+
+      tableY += rowHeight;
+    });
+
+    // Ligne TOTAL VOIX
+    x = pageMargin;
+    const totalVoix = Object.values(donnees.partis).reduce((sum, p) => sum + p.total, 0);
+    const totalVoixParCirc = circonscriptions.map((_, idx) => 
+      Object.values(donnees.partis).reduce((sum, p) => sum + p.circonscriptions[idx], 0)
+    );
+
+    doc.rect(x, tableY, rubriquesWidth, rowHeight).fillAndStroke('#1E3A8A', '#000');
+    doc.fillColor('#fff').font('Helvetica-Bold').fontSize(7).text('TOTAL VOIX', x + 2, tableY + 4, { 
+      width: rubriquesWidth - 4, 
+      align: 'left' 
+    });
+    x += rubriquesWidth;
+
+    totalVoixParCirc.forEach(valeur => {
+      doc.rect(x, tableY, circonsWidth, rowHeight).fillAndStroke('#1E3A8A', '#000');
+      doc.fillColor('#fff').font('Helvetica-Bold').text(formatNumber(valeur), x + 1, tableY + 4, { 
+        width: circonsWidth - 2, 
+        align: 'center' 
+      });
+      x += circonsWidth;
+    });
+
+    doc.rect(x, tableY, circonsWidth, rowHeight).fillAndStroke('#1E3A8A', '#000');
+    doc.fillColor('#fff').font('Helvetica-Bold').text(formatNumber(totalVoix), x + 1, tableY + 4, { 
+      width: circonsWidth - 2, 
+      align: 'center' 
+    });
+
+    tableY += rowHeight + 15;
+
+    // Taux de participation
+    const totalInscrits = donnees.rubriques.nombreInscrits.total;
+    const totalVotants = donnees.rubriques.nombreVotants.total;
+    const tauxParticipation = totalInscrits > 0 ? ((totalVotants / totalInscrits) * 100).toFixed(2) : 0;
+
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1E3A8A');
+    doc.text(`TAUX DE PARTICIPATION: ${tauxParticipation}%`, pageMargin, tableY, { width: pageWidth, align: 'left' });
+    doc.fillColor('#000');
+
+    // === SIGNATURE ===
+    const footerY = Math.min(tableY + 30, pageHeight + pageMargin - 50);
     doc.fontSize(9).font('Helvetica-Bold').fillColor('#000');
     doc.text('SIGNATURE', pageMargin, footerY);
 
@@ -1386,13 +1829,13 @@ const exportCirconscriptionPDF = async (req, res, next) => {
     doc.text('Signature: ............................', col2X, footerY + 12);
 
     doc.text('Date: ________________', col1X, footerY + 28);
-    doc.fontSize(7).fillColor('#666');
+    doc.fontSize(9).fillColor('#666');
     doc.text(`Généré le: ${new Date().toLocaleString('fr-FR')}`, col2X, footerY + 28);
 
     doc.end();
 
   } catch (err) {
-    console.error('Erreur export circonscription:', err);
+    console.error('Erreur export commune:', err);
     next(err);
   }
 };
@@ -1425,7 +1868,10 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
                 postesDeVote: {
                   include: {
                     resultSaisies: {
-                      where: { electionId },
+                      where: { 
+                        electionId,
+                        status: 'VALIDEE'
+                      },
                       include: {
                         resultPartis: {
                           include: {
@@ -1641,7 +2087,7 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
         width: pageWidth, 
         align: 'center' 
       });
-      doc.text(`Élection: ${electionsData.type} du ${new Date(electionsData.dateVote).toLocaleDateString('fr-FR')}`, pageMargin, lineY1 + 36, { 
+      doc.text(`Élection: ${electionsData.type} du 11/01/2026`, pageMargin, lineY1 + 36, { 
         width: pageWidth, 
         align: 'center' 
       });
@@ -1663,12 +2109,12 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
     const centreColWidth = 90;
     const totalVoixColWidth = 40;
     const dataColWidth = Math.max(30, Math.floor((pageWidth - centreColWidth - totalVoixColWidth) / (nbRubriques + nbPartis)));
-    const rowHeight = 18;
+    const rowHeight = 26;
 
     // Fonction pour dessiner l'en-tête du tableau
     const drawTableHeader = (startY) => {
       let tableY = startY + 10;
-      doc.fontSize(5).font('Helvetica-Bold');
+      doc.fontSize(10).font('Helvetica-Bold');
       let x = pageMargin;
       
       // Cellule CENTRES (2 lignes de hauteur)
@@ -1679,7 +2125,7 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
       // Colonnes pour chaque rubrique
       rubriques.forEach((rubrique) => {
         doc.rect(x, tableY, dataColWidth, rowHeight * 2).stroke();
-        doc.fontSize(4).text(rubrique.label, x + 1, tableY + 4, { 
+        doc.fontSize(9).text(rubrique.label, x + 1, tableY + 4, { 
           width: dataColWidth - 2, 
           align: 'center',
           lineBreak: true
@@ -1691,7 +2137,7 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
       partisData.forEach((parti) => {
         doc.rect(x, tableY, dataColWidth, rowHeight * 2).fillAndStroke('#f8f8f8', '#000');
         const sigle = (parti.sigle || parti.nom);
-        doc.fillColor('#000').fontSize(4).text(sigle, x + 1, tableY + 4, { 
+        doc.fillColor('#000').fontSize(9).text(sigle, x + 1, tableY + 4, { 
           width: dataColWidth - 2, 
           align: 'center',
           lineBreak: true
@@ -1701,7 +2147,7 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
 
       // Colonne TOTAL VOIX
       doc.rect(x, tableY, totalVoixColWidth, rowHeight * 2).fillAndStroke('#e0e0e0', '#000');
-      doc.fillColor('#000').fontSize(4).text('TOTAL VOIX', x + 1, tableY + rowHeight - 2, { 
+      doc.fillColor('#000').fontSize(9).text('TOTAL VOIX', x + 1, tableY + rowHeight - 2, { 
         width: totalVoixColWidth - 2, 
         align: 'center' 
       });
@@ -1715,7 +2161,7 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
     // === PREMIÈRE PAGE ===
     let lineY2 = drawPageHeader(1, totalPages);
     let tableY = drawTableHeader(lineY2);
-    doc.fontSize(5).font('Helvetica');
+    doc.fontSize(7).font('Helvetica');
 
     // Lignes de données - Une ligne par centre (10 par page)
     let currentPage = 1;
@@ -1728,7 +2174,7 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
         doc.addPage({ margin: 20, size: 'A4', layout: 'landscape' });
         lineY2 = drawPageHeader(currentPage, totalPages);
         tableY = drawTableHeader(lineY2);
-        doc.fontSize(5).font('Helvetica');
+        doc.fontSize(7).font('Helvetica');
         centresOnCurrentPage = 0;
       }
 
@@ -1736,8 +2182,8 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
       
       // Nom du centre seulement
       doc.rect(x, tableY, centreColWidth, rowHeight).stroke();
-      const nomCourt = centre.nom.length > 20 ? centre.nom.substring(0, 18) + '..' : centre.nom;
-      doc.font('Helvetica-Bold').fontSize(4).text(nomCourt, x + 2, tableY + 4, { 
+      const nomCourt = centre.nom;
+      doc.font('Helvetica-Bold').fontSize(9).text(nomCourt, x + 2, tableY + 4, { 
         width: centreColWidth - 4, 
         align: 'left' 
       });
@@ -1748,7 +2194,7 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
       rubriques.forEach(rubrique => {
         const val = donnees.rubriques[rubrique.key].centres[centreIndex];
         doc.rect(x, tableY, dataColWidth, rowHeight).stroke();
-        doc.fontSize(5).text(val.toString(), x + 1, tableY + 4, { width: dataColWidth - 2, align: 'center' });
+        doc.fontSize(7).text(val.toString(), x + 1, tableY + 4, { width: dataColWidth - 2, align: 'center' });
         x += dataColWidth;
       });
 
@@ -1758,13 +2204,13 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
         const val = donnees.partis[parti.id].centres[centreIndex];
         totalVoixCentre += val;
         doc.rect(x, tableY, dataColWidth, rowHeight).fillAndStroke('#fafafa', '#000');
-        doc.fillColor('#000').fontSize(5).text(val.toString(), x + 1, tableY + 4, { width: dataColWidth - 2, align: 'center' });
+        doc.fillColor('#000').fontSize(7).text(val.toString(), x + 1, tableY + 4, { width: dataColWidth - 2, align: 'center' });
         x += dataColWidth;
       });
 
       // Colonne TOTAL VOIX pour ce centre
       doc.rect(x, tableY, totalVoixColWidth, rowHeight).fillAndStroke('#f0f0f0', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').fontSize(5).text(totalVoixCentre.toString(), x + 1, tableY + 4, { 
+      doc.fillColor('#000').font('Helvetica-Bold').fontSize(7).text(totalVoixCentre.toString(), x + 1, tableY + 4, { 
         width: totalVoixColWidth - 2, 
         align: 'center' 
       });
@@ -1777,7 +2223,7 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
     // Ligne TOTAL (sur la dernière page)
     let x = pageMargin;
     doc.rect(x, tableY, centreColWidth, rowHeight).fillAndStroke('#d0d0d0', '#000');
-    doc.fillColor('#000').font('Helvetica-Bold').fontSize(5).text('TOTAL', x + 2, tableY + 4, { 
+    doc.fillColor('#000').font('Helvetica-Bold').fontSize(7).text('TOTAL', x + 2, tableY + 4, { 
       width: centreColWidth - 4, 
       align: 'center' 
     });
@@ -1787,7 +2233,7 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
     rubriques.forEach(rubrique => {
       const total = donnees.rubriques[rubrique.key].total;
       doc.rect(x, tableY, dataColWidth, rowHeight).fillAndStroke('#e0e0e0', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').fontSize(5).text(total.toString(), x + 1, tableY + 4, { 
+      doc.fillColor('#000').font('Helvetica-Bold').fontSize(7).text(total.toString(), x + 1, tableY + 4, { 
         width: dataColWidth - 2, 
         align: 'center' 
       });
@@ -1800,7 +2246,7 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
       const total = donnees.partis[parti.id].total;
       totalGeneralVoix += total;
       doc.rect(x, tableY, dataColWidth, rowHeight).fillAndStroke('#c0c0c0', '#000');
-      doc.fillColor('#000').font('Helvetica-Bold').fontSize(5).text(total.toString(), x + 1, tableY + 4, { 
+      doc.fillColor('#000').font('Helvetica-Bold').fontSize(7).text(total.toString(), x + 1, tableY + 4, { 
         width: dataColWidth - 2, 
         align: 'center' 
       });
@@ -1809,7 +2255,7 @@ const exportCentresParArrondissementPDF = async (req, res, next) => {
 
     // Total général des voix
     doc.rect(x, tableY, totalVoixColWidth, rowHeight).fillAndStroke('#b0b0b0', '#000');
-    doc.fillColor('#000').font('Helvetica-Bold').fontSize(5).text(totalGeneralVoix.toString(), x + 1, tableY + 4, { 
+    doc.fillColor('#000').font('Helvetica-Bold').fontSize(7).text(totalGeneralVoix.toString(), x + 1, tableY + 4, { 
       width: totalVoixColWidth - 2, 
       align: 'center' 
     });
@@ -1896,7 +2342,10 @@ const exportRecapGeneralResultatsPDF = async (req, res, next) => {
                   orderBy: { numero: 'asc' },
                   include: {
                     resultSaisies: {
-                      where: { electionId },
+                      where: { 
+                        electionId,
+                        status: 'VALIDEE'
+                      },
                       include: {
                         resultPartis: {
                           include: {
@@ -2141,7 +2590,7 @@ const exportRecapGeneralResultatsPDF = async (req, res, next) => {
         width: pageWidth, 
         align: 'center' 
       });
-      doc.text(`Élection: ${electionData.type} du ${new Date(electionData.dateVote).toLocaleDateString('fr-FR')}`, pageMargin, geoY + 12, { 
+      doc.text(`Élection: ${electionData.type} du 11/01/2026`, pageMargin, geoY + 12, { 
         width: pageWidth, 
         align: 'center' 
       });
@@ -2261,7 +2710,7 @@ const exportRecapGeneralResultatsPDF = async (req, res, next) => {
       
       doc.rect(partiX, contentY, partiColWidth[0], partiRowHeight).fillAndStroke(bgColor, '#ccc');
       doc.fillColor('#000').fontSize(7).font('Helvetica');
-      const partiLabel = parti.sigle ? `${parti.sigle} (${parti.nom.substring(0, 30)})` : parti.nom.substring(0, 40);
+      const partiLabel = parti.sigle ? `${parti.sigle} (${parti.nom})` : parti.nom;
       doc.text(partiLabel, partiX + 5, contentY + 5, { width: partiColWidth[0] - 10 });
       partiX += partiColWidth[0];
       
@@ -2479,7 +2928,7 @@ const exportRecapGeneralResultatsPDF = async (req, res, next) => {
           
           doc.rect(x, tableY, rubriqueWidth, rowHeight).fillAndStroke(bgColor, '#ccc');
           doc.fillColor('#000').font('Helvetica-Bold');
-          const partiLabel = parti.sigle || parti.nom.substring(0, 15);
+          const partiLabel = parti.sigle || parti.nom;
           doc.text(partiLabel, x + 3, tableY + 4, { width: rubriqueWidth - 6 });
           x += rubriqueWidth;
 
@@ -2544,7 +2993,7 @@ const exportRecapGeneralResultatsPDF = async (req, res, next) => {
     contentY += 15;
 
     // Tableau récap
-    const recapRubriques = ['Centre', 'Postes', 'Inscrits', 'Votants', 'Suff.Exp', ...partisData.map(p => p.sigle || p.nom.substring(0, 8)), 'Total'];
+    const recapRubriques = ['Centre', 'Postes', 'Inscrits', 'Votants', 'Suff.Exp', ...partisData.map(p => p.sigle || p.nom), 'Total'];
     const nbCols = recapRubriques.length;
     const recapColWidth = Math.floor((pageWidth) / nbCols);
     const recapRowHeight = 16;
@@ -2555,7 +3004,7 @@ const exportRecapGeneralResultatsPDF = async (req, res, next) => {
     recapRubriques.forEach((rub, idx) => {
       const colW = idx === 0 ? recapColWidth * 1.5 : recapColWidth * 0.9;
       doc.rect(rx, contentY, colW, recapRowHeight).fillAndStroke('#1E3A8A', '#000');
-      doc.fillColor('#fff').text(rub.substring(0, 10), rx + 2, contentY + 5, { width: colW - 4, align: 'center' });
+      doc.fillColor('#fff').text(rub, rx + 2, contentY + 5, { width: colW - 4, align: 'center' });
       rx += colW;
     });
     contentY += recapRowHeight;
@@ -2605,7 +3054,7 @@ const exportRecapGeneralResultatsPDF = async (req, res, next) => {
       // Nom centre
       const col1W = recapColWidth * 1.5;
       doc.rect(rx, contentY, col1W, recapRowHeight).fillAndStroke(bgColor, '#ccc');
-      doc.fillColor('#000').font('Helvetica-Bold').text(centre.nom.substring(0, 25), rx + 2, contentY + 5, { width: col1W - 4 });
+      doc.fillColor('#000').font('Helvetica-Bold').text(centre.nom, rx + 2, contentY + 5, { width: col1W - 4 });
       rx += col1W;
 
       // Données
@@ -2701,9 +3150,13 @@ const exportRecapHorairesPDF = async (req, res, next) => {
                   orderBy: { numero: 'asc' },
                   include: {
                     resultSaisies: {
-                      where: { electionId },
+                      where: { 
+                        electionId,
+                        status: 'VALIDEE'
+                      },
                       select: {
-                        dateOuverture: true
+                        dateOuverture: true,
+                        dateFermeture: true
                       }
                     }
                   }
@@ -2756,17 +3209,6 @@ const exportRecapHorairesPDF = async (req, res, next) => {
       if (!dateValue) return '--:--';
       const d = new Date(dateValue);
       if (isNaN(d.getTime())) return '--:--';
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mm = String(d.getMinutes()).padStart(2, '0');
-      return `${hh}:${mm}`;
-    };
-
-    // Fonction pour calculer heure + 10h
-    const addTenHours = (dateValue) => {
-      if (!dateValue) return '--:--';
-      const d = new Date(dateValue);
-      if (isNaN(d.getTime())) return '--:--';
-      d.setHours(d.getHours() + 10);
       const hh = String(d.getHours()).padStart(2, '0');
       const mm = String(d.getMinutes()).padStart(2, '0');
       return `${hh}:${mm}`;
@@ -2838,7 +3280,7 @@ const exportRecapHorairesPDF = async (req, res, next) => {
       const blocLeftX = pageMargin + coatOfArmsSize + 8;
       const blocWidth = 100;
       const leftTextY = headerY + 3;
-      doc.fontSize(6).font('Helvetica-Bold');
+      doc.fontSize(7).font('Helvetica-Bold');
       doc.text('MINISTÈRE DE LA', blocLeftX, leftTextY, { width: blocWidth, align: 'left' });
       doc.text('DÉCENTRALISATION ET DE LA', blocLeftX, leftTextY + 7, { width: blocWidth, align: 'left' });
       doc.text('GOUVERNANCE LOCALE', blocLeftX, leftTextY + 14, { width: blocWidth, align: 'left' });
@@ -2852,14 +3294,14 @@ const exportRecapHorairesPDF = async (req, res, next) => {
       doc.rect(blocLeftX + colorWidth, flagLineY, colorWidth, flagLineHeight).fill('#FCD116');
       doc.rect(blocLeftX + colorWidth * 2, flagLineY, colorWidth, flagLineHeight).fill('#CE1126');
       
-      doc.fontSize(6).font('Helvetica').fillColor('#000');
+      doc.fontSize(7).font('Helvetica').fillColor('#000');
       doc.text('MAIRIE DE COTONOU', blocLeftX, flagLineY + 6, { width: blocWidth, align: 'left' });
-      doc.fontSize(6).font('Helvetica-Bold').fillColor('#000');
+      doc.fontSize(7).font('Helvetica-Bold').fillColor('#000');
       doc.text('RÉPUBLIQUE DU BÉNIN', blocLeftX, flagLineY + 14, { width: blocWidth, align: 'left' });
       
       // Coordonnées droite
       const rightX = pageWidth - 100;
-      doc.fontSize(6).font('Helvetica');
+      doc.fontSize(7).font('Helvetica');
       doc.text('01 BP: 358 COTONOU', rightX, leftTextY, { width: 120, align: 'right' });
       doc.text('TÉL: 229 21.31.37.70', rightX, leftTextY + 7, { width: 120, align: 'right' });
       doc.text('Email: pref.cotonou@gouv.bj', rightX, leftTextY + 14, { width: 120, align: 'right' });
@@ -2868,12 +3310,12 @@ const exportRecapHorairesPDF = async (req, res, next) => {
       doc.moveTo(pageMargin, lineY1).lineTo(pageMargin + pageWidth, lineY1).stroke();
 
       // Titre principal
-      doc.fontSize(12).font('Helvetica-Bold');
+      doc.fontSize(14).font('Helvetica-Bold');
       doc.text('RÉCAPITULATIF DES HORAIRES', pageMargin, lineY1 + 6, { 
         width: pageWidth, 
         align: 'center' 
       });
-      doc.fontSize(10).font('Helvetica-Bold');
+      doc.fontSize(12).font('Helvetica-Bold');
       doc.text('D\'OUVERTURE ET DE FERMETURE', pageMargin, lineY1 + 20, { 
         width: pageWidth, 
         align: 'center' 
@@ -2882,13 +3324,13 @@ const exportRecapHorairesPDF = async (req, res, next) => {
       // Infos géographiques
       const departement = arrondissementData.circonscription?.commune?.departement?.nom || '';
       const commune = arrondissementData.circonscription?.commune?.nom || '';
-      doc.fontSize(8).font('Helvetica');
+      doc.fontSize(10).font('Helvetica');
       const geoY = lineY1 + 36;
       doc.text(`Département: ${departement}  |  Commune: ${commune}  |  Arrondissement: ${arrondissementData.nom}`, pageMargin, geoY, { 
         width: pageWidth, 
         align: 'center' 
       });
-      doc.text(`Élection: ${electionData.type} du ${new Date(electionData.dateVote).toLocaleDateString('fr-FR')}`, pageMargin, geoY + 12, { 
+      doc.text(`Élection: ${electionData.type} du 11/01/2026`, pageMargin, geoY + 12, { 
         width: pageWidth, 
         align: 'center' 
       });
@@ -2914,7 +3356,7 @@ const exportRecapHorairesPDF = async (req, res, next) => {
     contentY += 15;
 
     // Section Statistiques Globales
-    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1E3A8A');
+    doc.fontSize(12).font('Helvetica-Bold').fillColor('#1E3A8A');
     doc.text('STATISTIQUES GLOBALES', pageMargin, contentY);
     doc.fillColor('#000');
     contentY += 12;
@@ -2924,7 +3366,7 @@ const exportRecapHorairesPDF = async (req, res, next) => {
     const statsBoxHeight = 50;
     doc.rect(pageMargin, contentY, statsBoxWidth, statsBoxHeight).stroke();
     
-    doc.fontSize(9).font('Helvetica');
+    doc.fontSize(10).font('Helvetica');
     const statsY = contentY + 12;
     const col1X = pageMargin + 20;
     const col2X = pageMargin + 200;
@@ -2942,7 +3384,7 @@ const exportRecapHorairesPDF = async (req, res, next) => {
     contentY += statsBoxHeight + 15;
 
     // ============ AFFICHAGE DES CENTRES ============
-    const rowHeight = 18;
+    const rowHeight = 26;
     const colPoste = 80;
     const colOuverture = 100;
     const colFermeture = 100;
@@ -2968,7 +3410,7 @@ const exportRecapHorairesPDF = async (req, res, next) => {
 
       // En-tête tableau
       let x = pageMargin;
-      doc.fontSize(8).font('Helvetica-Bold');
+      doc.fontSize(10).font('Helvetica-Bold');
       
       doc.rect(x, contentY, colPoste, rowHeight).fillAndStroke('#1E3A8A', '#000');
       doc.fillColor('#fff').text('POSTE', x + 5, contentY + 5, { width: colPoste - 10, align: 'center' });
@@ -2985,11 +3427,11 @@ const exportRecapHorairesPDF = async (req, res, next) => {
       doc.fillColor('#000');
 
       // Données des postes
-      doc.fontSize(8).font('Helvetica');
+      doc.fontSize(10).font('Helvetica');
       centre.postesDeVote.forEach((poste, idx) => {
         const result = poste.resultSaisies && poste.resultSaisies.length > 0 ? poste.resultSaisies[0] : null;
         const heureOuverture = result ? formatTime(result.dateOuverture) : '--:--';
-        const heureFermeture = result ? addTenHours(result.dateOuverture) : '--:--';
+        const heureFermeture = result ? formatTime(result.dateFermeture) : '--:--';
         const bgColor = idx % 2 === 0 ? '#f8f9fa' : '#ffffff';
 
         x = pageMargin;
@@ -3017,7 +3459,7 @@ const exportRecapHorairesPDF = async (req, res, next) => {
     contentY = drawOfficialHeader(currentPage, totalPages);
     contentY += 15;
 
-    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1E3A8A');
+    doc.fontSize(12).font('Helvetica-Bold').fillColor('#1E3A8A');
     doc.text('TABLEAU RÉCAPITULATIF PAR CENTRE', pageMargin, contentY);
     doc.fillColor('#000');
     contentY += 15;
@@ -3027,10 +3469,10 @@ const exportRecapHorairesPDF = async (req, res, next) => {
     const recapColPostes = 60;
     const recapColOuv = 80;
     const recapColFerm = 80;
-    const recapRowHeight = 16;
+    const recapRowHeight = 24;
 
     let rx = pageMargin;
-    doc.fontSize(7).font('Helvetica-Bold');
+    doc.fontSize(9).font('Helvetica-Bold');
     
     doc.rect(rx, contentY, recapColCentre, recapRowHeight).fillAndStroke('#1E3A8A', '#000');
     doc.fillColor('#fff').text('CENTRE DE VOTE', rx + 5, contentY + 4, { width: recapColCentre - 10 });
@@ -3051,7 +3493,7 @@ const exportRecapHorairesPDF = async (req, res, next) => {
     doc.fillColor('#000');
 
     // Données récap par centre
-    doc.fontSize(7).font('Helvetica');
+    doc.fontSize(9).font('Helvetica');
     let totalPostesGlobal = 0;
     let totalMinutesOuv = 0;
     let totalMinutesFerm = 0;
@@ -3091,7 +3533,7 @@ const exportRecapHorairesPDF = async (req, res, next) => {
       rx = pageMargin;
       
       doc.rect(rx, contentY, recapColCentre, recapRowHeight).fillAndStroke(bgColor, '#ccc');
-      doc.fillColor('#000').font('Helvetica-Bold').text(centre.nom.substring(0, 35), rx + 3, contentY + 4, { width: recapColCentre - 6 });
+      doc.fillColor('#000').font('Helvetica-Bold').text(centre.nom, rx + 3, contentY + 4, { width: recapColCentre - 6 });
       rx += recapColCentre;
 
       doc.rect(rx, contentY, recapColPostes, recapRowHeight).fillAndStroke(bgColor, '#ccc');
@@ -3207,6 +3649,7 @@ module.exports = {
   exportTableauMatricielPDF,
   exportCentreDetailPDF,
   exportCirconscriptionPDF,
+  exportCommunePDF,
   exportCentresParArrondissementPDF,
   exportCentresParArrondissementPDFForSA,
   exportRecapGeneralResultatsPDF,
